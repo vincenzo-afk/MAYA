@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1787138717321,
+      "tag": "0000_young_dark_phoenix",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1787139137412,
+      "tag": "0001_whole_crystal",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787139170190,
+      "tag": "0002_cold_invaders",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1787140635027,
+      "tag": "0003_huge_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787140838663,
+      "tag": "0004_flippant_the_watchers",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# Project TODO
+
+- [x] Define the Maya data model for conversations, memories, mood logs, reactions, preferences, game sessions, and YouTube sessions.
+- [x] Add and apply database migrations for all Maya per-user data.
+- [x] Implement secure Manus OAuth-protected tRPC procedures for the completed Maya companion features.
+- [x] Build Maya's warm, witty, emotionally intelligent Hinglish-friendly AI brain with mood detection and natural memory recall.
+- [x] Implement persistent chat history, long-term user memories, and relationship-aware emotional memory.
+- [x] Implement server-side Whisper transcription for recorded voice notes and attach resulting audio/transcripts to messages.
+- [x] Implement free expressive TTS responses using browser speech synthesis and exactly ten selectable Maya voice styles.
+- [x] Build an in-browser voice-call experience using live Web Speech API transcription and Maya's spoken replies.
+- [x] Implement in-chat photorealistic Maya photo generation with tap-to-expand and emoji reactions.
+- [x] Support emoji reactions on regular messages and photo messages.
+- [x] Support user-sent GIF and sticker messages with emoji reactions.
+- [x] Build a warm, responsive messenger-style Maya chat experience with streamed replies and clear emotional status.
+- [x] Implement real backend-to-frontend streamed Maya replies rather than a simulated message reveal.
+- [x] Add automated coverage for streamed partial replies and streaming error handling.
+- [x] Add chat themes and Maya display-photo customization.
+- [x] Implement playable chess with Maya strategy and commentary.
+- [x] Implement Sudoku board generation with selectable difficulty levels while preserving validation and hints.
+- [x] Add a Tic-tac-toe post-win move-lockout test and confirm the completed-game UI remains locked.
+- [x] Implement brainteaser, math, calendar, and voice-game activities.
+- [x] Connect YouTube co-watch sessions to Maya chat context with video-specific discussion prompts and reactions.
+- [x] Link mood records to their persisted check-in session and render the journal from those session-linked records.
+- [x] Create visual assets for Maya and use only project-managed static asset URLs.
+- [x] Add and run Vitest coverage for Maya's companion API procedures, including media, reactions, co-watch, and check-in flows.
+- [x] Verify desktop and mobile layouts, fix defects, and prepare the completed project for its final checkpoint.
+- [x] Verify the signed-in Maya workspace on desktop and mobile, including chat controls, activities, mood journal, media messages, and voice controls.
+- [x] Create the final project checkpoint after authenticated and public-layout verification passes.
+- [ ] Commit and push the completed Maya app to github.com/vincenzo-afk/MAYA using the requested account identity.
