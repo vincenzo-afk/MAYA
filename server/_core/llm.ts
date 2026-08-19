@@ -212,14 +212,20 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+const usesGroq = () => ENV.groqApiKey.trim().length > 0;
+
+const resolveApiUrl = () => {
+  if (usesGroq()) return "https://api.groq.com/openai/v1/chat/completions";
+  return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
     : "https://forge.manus.im/v1/chat/completions";
+};
+
+const resolveApiKey = () => usesGroq() ? ENV.groqApiKey : ENV.forgeApiKey;
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!resolveApiKey()) {
+    throw new Error("A server-side LLM API key is not configured");
   }
 };
 
@@ -362,10 +368,6 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     messages: messages.map(normalizeMessage),
   };
 
-  if (model) {
-    payload.model = model;
-  }
-
   if (tools && tools.length > 0) {
     payload.tools = tools;
   }
@@ -397,6 +399,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     output_schema,
   });
 
+  const resolvedModel = model ?? (usesGroq()
+    ? normalizedResponseFormat?.type === "json_schema"
+      ? "openai/gpt-oss-20b"
+      : "llama-3.3-70b-versatile"
+    : undefined);
+  if (resolvedModel) payload.model = resolvedModel;
+
   if (normalizedResponseFormat) {
     payload.response_format = normalizedResponseFormat;
   }
@@ -405,7 +414,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${resolveApiKey()}`,
     },
     body: JSON.stringify(payload),
   });
@@ -427,7 +436,8 @@ export async function invokeLLMStream(params: Pick<InvokeParams, "messages" | "m
     messages: params.messages.map(normalizeMessage),
     stream: true,
   };
-  if (params.model) payload.model = params.model;
+  const resolvedModel = params.model ?? (usesGroq() ? "llama-3.3-70b-versatile" : undefined);
+  if (resolvedModel) payload.model = resolvedModel;
   const maxTokens = params.max_tokens ?? params.maxTokens;
   if (typeof maxTokens === "number") payload.max_tokens = maxTokens;
 
@@ -436,7 +446,7 @@ export async function invokeLLMStream(params: Pick<InvokeParams, "messages" | "m
     headers: {
       "content-type": "application/json",
       accept: "text/event-stream",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${resolveApiKey()}`,
     },
     body: JSON.stringify(payload),
   });
@@ -462,12 +472,14 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  const url = usesGroq()
+    ? "https://api.groq.com/openai/v1/models"
+    : ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+      ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
+      : "https://forge.manus.im/v1/models";
 
   const response = await fetchWithBackoff(url, {
-    headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
+    headers: { authorization: `Bearer ${resolveApiKey()}` },
   });
 
   if (!response.ok) {

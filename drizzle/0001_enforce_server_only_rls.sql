@@ -1,0 +1,9 @@
+create policy "server_only_direct_api" on public.users for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_messages for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_memories for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_daily_checkins for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_mood_logs for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_preferences for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_relationships for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_game_sessions for all to anon, authenticated using (false) with check (false);
+create policy "server_only_direct_api" on public.maya_youtube_sessions for all to anon, authenticated using (false) with check (false);

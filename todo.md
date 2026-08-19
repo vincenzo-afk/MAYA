@@ -63,5 +63,20 @@
 - [ ] Complete the remaining authenticated desktop/mobile companion verification, then close the final evidence-led audit of Maya’s implemented features.
 - [x] Rebuild the production README from verified source facts using the README documentation workflow.
 - [x] Update the GitHub repository description and topics for Maya.
-- [ ] Push the final audited source, migrations, tests, and documentation to github.com/vincenzo-afk/MAYA using the requested repository identity.
+- [x] Push the final audited source, migrations, tests, and documentation to github.com/vincenzo-afk/MAYA using the requested repository identity.
 - [ ] Capture the remaining authenticated drawer or modal evidence after the handcrafted CSS pass, then close the companion-surface design refinement verification.
+- [ ] Add Maya’s hosted website URL to the repository About section; the requested 20 GitHub discovery topics are now published.
+- [ ] Prepare the checkpointed Maya project for hosting and guide the user through the required Publish action in the project interface.
+- [x] Assess Maya’s Vercel/Render production readiness, including external OAuth redirect requirements and required environment variables.
+- [ ] Deploy Maya through the user’s connected browser to Vercel or Render, then add the resulting hosted URL to the GitHub repository About section.
+- [ ] Configure a Render web service for Maya’s Express runtime with the required build/start commands, database, OAuth callback, Forge integrations, and production secrets.
+- [ ] Use the provided browser access to complete the signed-in Maya verification and confirm the live hosted release before final handoff.
+- [ ] Complete the remaining release operations through the connected user browser wherever the platform permits, requesting user action only for sign-in or explicit publishing confirmation.
+- [ ] Perform all remaining browser-based Maya and GitHub release steps exclusively in the user’s connected browser session.
+- [ ] Confirm the active Render page is the user’s connected browser session before entering deployment or environment configuration.
+- [ ] Complete Render deployment through the user-confirmed connected device browser session and capture the resulting public service URL.
+- [ ] Complete all remaining external-host browser actions only through the user’s real connected browser session, with no sandbox-browser fallback.
+- [ ] Use the user-authorized Render API credential to create and configure Maya’s external production web service without exposing the token.
+- [x] Revalidate and, if reproducible, resolve the recorded Maya activity-module import failure before final release verification.
+- [x] Migrate Maya’s external production persistence from the managed database environment to a user-controlled Supabase project without changing per-user data isolation.
+- [x] Configure Maya’s server-side companion LLM adapter to use the user-provided Groq API key with verified external credentials and no client-side key exposure.
