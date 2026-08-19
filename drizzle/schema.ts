@@ -94,7 +94,7 @@ export const mayaRelationships = mysqlTable("maya_relationships", {
 export const mayaGameSessions = mysqlTable("maya_game_sessions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  gameType: mysqlEnum("gameType", ["chess", "sudoku", "ticTacToe", "brainteaser", "math", "calendar", "voice"]).notNull(),
+  gameType: mysqlEnum("gameType", ["chess", "sudoku", "ticTacToe", "brainteaser", "math", "calendar", "voice", "ludo", "snakesLadders", "connectFour", "game2048", "wouldYouRather"]).notNull(),
   state: json("state").$type<Record<string, unknown>>().notNull(),
   result: varchar("result", { length: 32 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

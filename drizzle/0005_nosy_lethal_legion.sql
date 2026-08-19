@@ -1,0 +1,1 @@
+ALTER TABLE `maya_game_sessions` MODIFY COLUMN `gameType` enum('chess','sudoku','ticTacToe','brainteaser','math','calendar','voice','ludo','snakesLadders','connectFour','game2048','wouldYouRather') NOT NULL;

@@ -135,7 +135,7 @@ export const mayaRouter = router({
   })).mutation(({ ctx, input }) => updatePreferences(ctx.user.id, input)),
 
   saveGameSession: protectedProcedure.input(z.object({
-    gameType: z.enum(["chess", "sudoku", "ticTacToe", "brainteaser", "math", "calendar", "voice"]),
+    gameType: z.enum(["chess", "sudoku", "ticTacToe", "brainteaser", "math", "calendar", "voice", "ludo", "snakesLadders", "connectFour", "game2048", "wouldYouRather"]),
     state: z.record(z.string(), z.unknown()),
     result: z.string().max(32).optional(),
   })).mutation(({ ctx, input }) => saveGameSession(ctx.user.id, input.gameType, input.state, input.result)),

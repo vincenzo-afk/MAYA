@@ -66,6 +66,23 @@ describe("Maya protected companion APIs", () => {
     expect(dbMocks.saveYoutubeSession).toHaveBeenCalledWith(42, "https://www.youtube.com/watch?v=abc123", "A shared video", "Talked about the music.");
   });
 
+  it("accepts and scopes the expanded companion-game sessions to the signed-in user", async () => {
+    dbMocks.saveGameSession.mockResolvedValue(undefined);
+
+    await caller().maya.saveGameSession({ gameType: "ludo", state: { user: [0, -1, -1, -1], maya: [-1, -1, -1, -1] }, result: "in-progress" });
+    await caller().maya.saveGameSession({ gameType: "connectFour", state: { board: [] } });
+    await caller().maya.saveGameSession({ gameType: "game2048", state: { board: [], score: 0 } });
+
+    expect(dbMocks.saveGameSession).toHaveBeenNthCalledWith(1, 42, "ludo", expect.objectContaining({ user: [0, -1, -1, -1] }), "in-progress");
+    expect(dbMocks.saveGameSession).toHaveBeenNthCalledWith(2, 42, "connectFour", { board: [] }, undefined);
+    expect(dbMocks.saveGameSession).toHaveBeenNthCalledWith(3, 42, "game2048", { board: [], score: 0 }, undefined);
+  });
+
+  it("rejects unsupported game-session types before attempting a save", async () => {
+    await expect(caller().maya.saveGameSession({ gameType: "unknown-game" as "ludo", state: {} })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.saveGameSession).not.toHaveBeenCalled();
+  });
+
   it("opens a persisted daily check-in using the supplied date", async () => {
     dbMocks.openDailyCheckIn.mockResolvedValue({ created: true, checkIn: { id: 3, checkInDate: "2026-08-19" } });
 

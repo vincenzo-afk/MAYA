@@ -221,7 +221,7 @@ export async function updateRelationship(userId: number, input: { mood: string; 
   }).where(eq(mayaRelationships.userId, userId));
 }
 
-export async function saveGameSession(userId: number, gameType: "chess" | "sudoku" | "ticTacToe" | "brainteaser" | "math" | "calendar" | "voice", state: Record<string, unknown>, result?: string) {
+export async function saveGameSession(userId: number, gameType: "chess" | "sudoku" | "ticTacToe" | "brainteaser" | "math" | "calendar" | "voice" | "ludo" | "snakesLadders" | "connectFour" | "game2048" | "wouldYouRather", state: Record<string, unknown>, result?: string) {
   const db = await getDb();
   if (!db) throw new Error("Maya's activity journal is temporarily unavailable.");
   await db.insert(mayaGameSessions).values({ userId, gameType, state, result: result?.slice(0, 32) });

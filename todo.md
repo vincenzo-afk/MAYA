@@ -28,4 +28,40 @@
 - [x] Create the final project checkpoint after authenticated and public-layout verification passes.
 - [x] Commit and push the completed Maya app to github.com/vincenzo-afk/MAYA using the requested account identity.
 - [x] Analyze the codebase and write a verified production-quality README.md for Maya.
-- [ ] Commit and push the README documentation update to github.com/vincenzo-afk/MAYA.
+- [x] Commit and push the README documentation update to github.com/vincenzo-afk/MAYA.
+- [x] Audit the live Maya app, runtime logs, and messaging flows; record all reproducible defects before code changes.
+- [x] Remove incompatible component helper exports that repeatedly invalidate React Fast Refresh during activity edits.
+- [x] Add regression coverage proving the selected voice preview style controls playback rate, pitch, and voice index.
+- [x] Implement and verify keyboard/touch-accessible reaction controls with visible focus states and activation semantics.
+- [x] Render explicit pending/failed/retry delivery UI for streamed messages and add regression tests for those states.
+- [x] Replace any remaining prompt/toast-only settings flows with accessible dialogs or sheets and verify them in code.
+- [x] Add MediaRecorder MIME fallback logic with tests or clearly verifiable implementation.
+- [x] Replace the three-column companion workspace with a responsive WhatsApp-inspired messenger shell.
+- [x] Add and verify message grouping, date dividers, timestamps, retry UI, and delivery indicators in the authenticated chat view.
+- [x] Rebuild the composer with auto-resize, accessible media actions, voice-note feedback, and robust stream-failure recovery.
+- [x] Replace prompt- and toast-only controls with functional photo-request and settings surfaces.
+- [x] Add direct component-level coverage for the responsive Memories and Mood Journal drawer render path, then capture desktop and mobile evidence.
+- [x] Add regression tests for chat-state helpers and interaction flows beyond speech cancellation.
+- [x] Verify public and signed-in layouts on desktop and mobile and repair all discovered issues before checkpointing the redesign.
+- [ ] Capture authenticated desktop and mobile evidence of the redesigned workspace with both the Memories drawer and Mood Journal drawer open.
+- [ ] Perform and document a final signed-in regression pass for send/retry, reactions, settings, voice picker, media picker, activities, and context drawers.
+- [ ] Run an independent verification matrix for Maya's redesigned chat, available companion controls, games, runtime logs, and responsive layouts.
+- [x] Extract deterministic, testable player-friendly chess and tic-tac-toe policy utilities with injectable randomness.
+- [x] Add variable Maya thinking-time states, board lockout, and safe timer cleanup to chess and tic-tac-toe.
+- [x] Make Maya choose gentler chess replies and intentionally imperfect tic-tac-toe replies so users win frequently.
+- [x] Add and run regression coverage for fair-play move selection, thinking delay, move lockout, cleanup, and game outcomes.
+- [ ] Verify the upgraded games and redesigned messenger on desktop and mobile, checkpoint the build, and push the update to github.com/vincenzo-afk/MAYA.
+- [x] Confirm and eliminate the recorded unavailable-speech-engine cancellation error, then verify no new runtime errors after restart.
+- [x] Add direct regression coverage for thinking-state input lockout and timer cleanup when chess or tic-tac-toe resets or unmounts.
+- [x] Add a focused call-control regression test for opening listening, stopping it, and closing safely when browser speech APIs are unavailable; document that the unauthenticated preview cannot exercise the signed-in modal directly.
+- [x] Test Maya's actual start-listening fallback when neither browser SpeechRecognition API is available, and route the UI through that checked helper.
+- [x] Add fully playable Ludo with a compact two-player board, legal dice/token rules, persistent game state, and a gentle Maya policy.
+- [x] Add chat handoffs for Snakes & Ladders, Connect Four, and 2048 so each new activity can flow naturally back into Maya’s conversation.
+- [x] Add user-favoring Maya turn policies, thinking states, input lockout, and reset/unmount cleanup for the new competitive games.
+- [x] Add focused regression coverage for new-game turn-flow transitions, completed-game lockout, repeat-turn behavior, safe cleanup, and saved-session error handling.
+- [ ] Verify the expanded activity library on desktop and mobile, update documentation, checkpoint the work, and push it to github.com/vincenzo-afk/MAYA.
+- [ ] Complete the remaining authenticated desktop/mobile companion verification, then close the final evidence-led audit of Maya’s implemented features.
+- [x] Rebuild the production README from verified source facts using the README documentation workflow.
+- [x] Update the GitHub repository description and topics for Maya.
+- [ ] Push the final audited source, migrations, tests, and documentation to github.com/vincenzo-afk/MAYA using the requested repository identity.
+- [ ] Capture the remaining authenticated drawer or modal evidence after the handcrafted CSS pass, then close the companion-surface design refinement verification.

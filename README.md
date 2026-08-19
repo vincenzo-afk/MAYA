@@ -45,7 +45,7 @@ The companion experience is personalized per user. The application persists mess
 | Continuity | Durable memory candidates for names, preferences, and birthdays, plus rapport and recurring-topic context. |
 | Voice | Recorded voice notes uploaded to storage and transcribed server-side; browser speech synthesis with ten selectable voice styles; browser speech-recognition call mode where supported. |
 | Visual messages | In-chat photorealistic image generation for Maya, tap-to-expand photo presentation, emoji reactions, GIFs, and stickers. |
-| Shared activities | Chess, Sudoku, tic-tac-toe, brainteasers, a math prompt, calendar/day lookup, a browser voice game, and YouTube co-watch. |
+| Shared activities | Chess, Sudoku, tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteasers, a math prompt, calendar/day lookup, a browser voice game, and YouTube co-watch. Competitive games include visible thinking turns and friendly Maya policies that leave the user meaningful opportunities to win. [10] |
 | Privacy boundary | Manus OAuth authentication and user-scoped database procedures for companion data. |
 
 > **Companion boundary:** Maya’s prompt explicitly discloses that she is AI when asked, avoids claims of physical life or consciousness, and directs crisis content toward local emergency support and trusted people. [2]
@@ -171,7 +171,7 @@ The development command runs `tsx watch server/_core/index.ts`. The server choos
 
 ### Play or co-watch
 
-Open the activities drawer to play chess, Sudoku, tic-tac-toe, brainteasers, math, calendar, or the voice game. Activity state is saved through the authenticated Maya router. For a co-watch, paste a valid YouTube URL, optionally add viewing notes, and send the generated discussion prompt into the chat. The player uses YouTube’s `youtube-nocookie` embed domain. [10] [11]
+Open the activities drawer to play chess, Sudoku, tic-tac-toe, **Ludo**, **Snakes & Ladders**, **Connect Four**, **2048**, **Would You Rather**, brainteasers, math, calendar, or the voice game. The new competitive games visibly pause for Maya’s turn, lock the board while she is thinking, and favor friendly—not perfect—responses. Every supported activity saves its private state through the authenticated Maya router. Ludo, Snakes & Ladders, Connect Four, 2048, and Would You Rather include a contextual prompt that carries the moment back into chat. For a co-watch, paste a valid YouTube URL, optionally add viewing notes, and send the generated discussion prompt into the chat. The player uses YouTube’s `youtube-nocookie` embed domain. [10] [11]
 
 ---
 
@@ -198,7 +198,7 @@ All procedures under `maya.*` are protected by Manus authentication. The generat
 | `maya.memories`, `maya.mood`, `maya.dailyCheckIns` | Queries | Reads user-scoped companion history. |
 | `maya.openDailyCheckIn` | Mutation | Opens or returns the one daily check-in for a `YYYY-MM-DD` date. |
 | `maya.preferences`, `maya.updatePreferences` | Query / mutation | Reads or updates theme, voice style, and display photo. |
-| `maya.saveGameSession` | Mutation | Persists chess, Sudoku, tic-tac-toe, brainteaser, math, calendar, or voice-game state. |
+| `maya.saveGameSession` | Mutation | Persists chess, Sudoku, tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteaser, math, calendar, or voice-game state for the signed-in user. |
 | `maya.saveYoutubeSession` | Mutation | Persists a YouTube co-watch URL, title, and notes. |
 
 Inputs are validated with Zod in the procedure router. Refer to [`server/routers/maya.ts`](./server/routers/maya.ts) for the typed input contracts. [12]
@@ -269,7 +269,8 @@ MAYA/
 - ✅ Server-side voice-note transcription and media storage.
 - ✅ Browser voice-call mode and ten playback-style presets.
 - ✅ Image messages, emoji reactions, GIFs, and stickers.
-- ✅ Chess, Sudoku difficulty settings and hints, unbeatable tic-tac-toe logic, brainteasers, math, calendar, and a voice game.
+- ✅ Chess, Sudoku difficulty settings and hints, player-friendly tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteasers, math, calendar, and a voice game.
+- ✅ Visible Maya thinking turns, legal-move lockout, safe timer cleanup, contextual game-to-chat handoffs, and graceful saved-session error feedback.
 - ✅ YouTube co-watch embed with private session notes.
 - ✅ Daily check-ins and session-linked mood history.
 
@@ -288,7 +289,7 @@ pnpm test
 pnpm check
 ```
 
-The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures, emotion/memory helpers and streaming-error handling, plus Sudoku and tic-tac-toe game logic. The current suite contains four test files and fifteen tests. [5] [13]
+The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, and saved-session error feedback. The current suite contains **five test files and forty-two tests**. [5] [13]
 
 Format source files with:
 
