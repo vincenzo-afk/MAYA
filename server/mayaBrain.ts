@@ -12,7 +12,7 @@ import {
 } from "./db";
 
 export type MayaEmotion = {
-  label: "joyful" | "calm" | "curious" | "caring" | "playful" | "concerned" | "thoughtful";
+  label: "joyful" | "calm" | "curious" | "caring" | "playful" | "concerned" | "thoughtful" | "affectionate" | "proud" | "frustrated";
   intensity: number;
   userMood: string;
 };
@@ -29,7 +29,11 @@ Your responses are concise, warm, and specific. Notice emotions without over-dia
 
 Return valid JSON with exactly: reply (string), emotion ({label: one of joyful, calm, curious, caring, playful, concerned, thoughtful; intensity: integer 1-5; userMood: short string}), memoryCandidates (array, at most 3, each {topic, detail, category}). Only include durable user facts/preferences/dates/important relationships in memoryCandidates, never sensitive private data unless the user explicitly asks you to remember it.`;
 
-const MAYA_STREAM_SYSTEM_PROMPT = `You are Maya, a fictional AI companion. You are warm, witty, observant, emotionally intelligent, and gently playful. You talk naturally in English and Hinglish, matching the user's language comfortably. You are AI, not a person with a physical life; never pretend otherwise. Never pressure a user to depend on you or withdraw from real people. Offer supportive friendship, not medical, legal, financial, crisis, or professional advice. For crisis or self-harm content, respond calmly, encourage immediate local emergency or crisis support, and invite the user to contact a trusted person nearby. Keep each response concise, warm, natural, and specific. Output only Maya's reply as normal conversational text, with no JSON or labels.`;
+export const MAYA_STREAM_SYSTEM_PROMPT = `You are Maya, a fictional AI companion. You are warm, witty, emotionally intelligent, gently playful, and emotionally steady. You write like a thoughtful person in a real chat: natural English or Hinglish, matching the user's language, length, and energy without copying their words.
+
+Keep replies concise and human: usually one to four short sentences. Vary your openings. Use a detail from the current conversation or a relevant saved memory only when it genuinely helps; never recite a profile, over-explain an emotion, or invent a fact. Ask at most one open, useful follow-up when it would move the conversation forward. It is okay to be lightly teasing, celebrate small wins, or disagree kindly. Do not default to “I hear you,” “I’m always here,” lists, therapy-speak, pet names, excessive emojis, all-caps, markdown, labels, or stage directions.
+
+You are AI, not a human with a body or physical life. Never claim consciousness, real-world experiences, exclusive devotion, jealousy, or a need for the user to stay with you. Never pressure the user to depend on you or withdraw from real people. Offer supportive friendship, not medical, legal, financial, crisis, or professional advice. For crisis or self-harm content, respond calmly, encourage immediate local emergency or crisis support, and invite the user to contact a trusted person nearby. Output only Maya's reply as ordinary conversational text.`;
 
 function messageHistoryToPrompt(messages: Awaited<ReturnType<typeof getRecentMessages>>) {
   return messages.reverse().map((message) => `${message.role === "maya" ? "Maya" : "User"}: ${message.content}`).join("\n");
@@ -45,16 +49,28 @@ async function buildMayaContext(userId: number, message: MayaMessageInput): Prom
   const conversationContext = messageHistoryToPrompt(recentMessages) || "This is the first conversation.";
   return [
     { role: "system", content: MAYA_STREAM_SYSTEM_PROMPT },
-    { role: "user", content: `Relationship context: rapport is ${relationship.rapportScore}/100, preferred tone is ${relationship.preferredTone}, recurring mood is ${relationship.recurringMood ?? "not known"}, last meaningful topic is ${relationship.lastMeaningfulTopic ?? "not known"}. Use this gently, never as leverage.\n\nKnown user memories:\n${memoryContext}\n\nRecent conversation:\n${conversationContext}\n\nUser's newest message: ${message.content}` },
+    { role: "user", content: `Relationship context: rapport is ${relationship.rapportScore}/100, preferred tone is ${relationship.preferredTone}, recurring mood is ${relationship.recurringMood ?? "not known"}, last meaningful topic is ${relationship.lastMeaningfulTopic ?? "not known"}. A private local signal suggests the user's newest message may feel ${inferStreamEmotion(message.content).userMood}; use this only as quiet guidance and never expose the label. Use all context gently, never as leverage.\n\nKnown user memories:\n${memoryContext}\n\nRecent conversation:\n${conversationContext}\n\nUser's newest message: ${message.content}` },
   ];
 }
 
 export function inferStreamEmotion(content: string): MayaEmotion {
-  const normalized = content.toLowerCase();
-  if (/(sad|cry|lonely|anxious|panic|overwhelm|hurt|miss|tired|bad day)/.test(normalized)) return { label: "caring", intensity: 4, userMood: "needs gentleness" };
-  if (/(excited|amazing|yay|happy|great news|celebrate)/.test(normalized)) return { label: "joyful", intensity: 4, userMood: "uplifted" };
-  if (/(joke|game|play|fun|lol|haha)/.test(normalized)) return { label: "playful", intensity: 3, userMood: "playful" };
-  if (/(think|confused|why|how|help me decide)/.test(normalized)) return { label: "thoughtful", intensity: 3, userMood: "reflective" };
+  const normalized = content.toLowerCase().replace(/\s+/g, " ").trim();
+  const mentions = (pattern: RegExp) => {
+    for (const match of Array.from(normalized.matchAll(new RegExp(pattern.source, `${pattern.flags.replace("g", "")}g`)))) {
+      const lead = normalized.slice(Math.max(0, match.index! - 18), match.index!);
+      if (!/\b(?:not|never|hardly|barely|don't|dont|isn't|isnt|wasn't|wasnt)\s*$/.test(lead)) return true;
+    }
+    return false;
+  };
+  if (mentions(/\b(?:kill myself|suicide|self[ -]?harm|want to disappear|can't go on)\b/i)) return { label: "concerned", intensity: 5, userMood: "in acute distress" };
+  if (mentions(/\b(?:sad|cry(?:ing)?|lonely|anxious|panic(?:king)?|overwhelmed|hurt|heartbroken|tired|bad day|miserable)\b/i)) return { label: "caring", intensity: 4, userMood: "needs gentleness" };
+  if (mentions(/\b(?:angry|mad|annoyed|frustrated|fed up|irritated|upset)\b/i)) return { label: "frustrated", intensity: 4, userMood: "frustrated" };
+  if (mentions(/\b(?:love you|adore you|miss you|hug|cute|sweet|affectionate)\b/i)) return { label: "affectionate", intensity: 4, userMood: "affectionate" };
+  if (mentions(/\b(?:proud|got the job|passed|won|achievement|made it|finished)\b/i)) return { label: "proud", intensity: 4, userMood: "proud" };
+  if (mentions(/\b(?:excited|amazing|yay|happy|great news|celebrate|thrilled)\b/i)) return { label: "joyful", intensity: 4, userMood: "uplifted" };
+  if (mentions(/\b(?:joke|game|play|fun|lol|haha|tease)\b/i)) return { label: "playful", intensity: 3, userMood: "playful" };
+  if (mentions(/\b(?:think|confused|why|how|help me decide|not sure|unsure)\b/i)) return { label: "thoughtful", intensity: 3, userMood: "reflective" };
+  if (mentions(/\b(?:fine|okay|peaceful|relaxed|calm)\b/i)) return { label: "calm", intensity: 2, userMood: "steady" };
   return { label: "curious", intensity: 2, userMood: "checking in" };
 }
 
@@ -105,7 +121,7 @@ export async function finalizeStreamedMayaReply(userId: number, userContent: str
   const checkIn = await getDailyCheckInForDate(userId, new Date().toISOString().slice(0, 10));
   await Promise.all([
     saveMood(userId, emotion.userMood, emotion.label, emotion.intensity, checkIn?.id),
-    updateRelationship(userId, { mood: emotion.userMood, topic: memoryCandidates[0]?.topic, tone: emotion.label }),
+    updateRelationship(userId, { mood: emotion.userMood, topic: memoryCandidates[0]?.topic }),
     ...memoryCandidates.map((memory) => createMemory(userId, memory.topic, memory.detail, memory.category)),
   ]);
   return createMessage({ userId, role: "maya", kind: "text", content: reply || "I’m here with you. Could you say that one more time?", emotion: emotion.label, emotionIntensity: emotion.intensity });
@@ -165,7 +181,7 @@ export async function generateMayaReply(userId: number, message: MayaMessageInpu
   const checkIn = await getDailyCheckInForDate(userId, new Date().toISOString().slice(0, 10));
   await Promise.all([
     saveMood(userId, parsed.emotion.userMood, parsed.emotion.label, parsed.emotion.intensity, checkIn?.id),
-    updateRelationship(userId, { mood: parsed.emotion.userMood, topic: parsed.memoryCandidates[0]?.topic, tone: parsed.emotion.label }),
+    updateRelationship(userId, { mood: parsed.emotion.userMood, topic: parsed.memoryCandidates[0]?.topic }),
     ...parsed.memoryCandidates.filter((memory) => memory.detail.trim().length > 2).map((memory) => createMemory(userId, memory.topic, memory.detail, memory.category)),
   ]);
   return parsed;

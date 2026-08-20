@@ -8,10 +8,12 @@ import {
   getMemories,
   getMoodLog,
   getOrCreatePreferences,
+  getOrCreateRelationship,
   getRecentMessages,
   openDailyCheckIn,
   saveGameSession,
   saveYoutubeSession,
+  setRelationshipTone,
   toggleMessageReaction,
   updatePreferences,
 } from "../db";
@@ -31,13 +33,14 @@ function decodeDataUrl(dataUrl: string) {
 
 export const mayaRouter = router({
   bootstrap: protectedProcedure.query(async ({ ctx }) => {
-    const [messages, preferences, mood, dailyCheckIns] = await Promise.all([
+    const [messages, preferences, mood, dailyCheckIns, relationship] = await Promise.all([
       getRecentMessages(ctx.user.id, 80),
       getOrCreatePreferences(ctx.user.id),
       getMoodLog(ctx.user.id, 12),
       getDailyCheckIns(ctx.user.id, 30),
+      getOrCreateRelationship(ctx.user.id),
     ]);
-    return { messages: messages.reverse(), preferences, mood, dailyCheckIns };
+    return { messages: messages.reverse(), preferences, mood, dailyCheckIns, relationship };
   }),
 
   sendMessage: protectedProcedure.input(messageInput).mutation(async ({ ctx, input }) => {
@@ -115,6 +118,10 @@ export const mayaRouter = router({
     voiceStyle: z.number().int().min(0).max(9).optional(),
     displayPhoto: z.string().max(2048).nullable().optional(),
   })).mutation(({ ctx, input }) => updatePreferences(ctx.user.id, input)),
+
+  setCompanionTone: protectedProcedure.input(z.object({
+    tone: z.enum(["soft and reassuring", "playful and cheeky", "honest and direct", "quiet and spacious"]),
+  })).mutation(({ ctx, input }) => setRelationshipTone(ctx.user.id, input.tone)),
 
   saveGameSession: protectedProcedure.input(z.object({
     gameType: z.enum(["chess", "sudoku", "ticTacToe", "brainteaser", "math", "calendar", "voice", "ludo", "snakesLadders", "connectFour", "game2048", "wouldYouRather"]),

@@ -6,10 +6,12 @@ const dbMocks = vi.hoisted(() => ({
   getMemories: vi.fn(),
   getMoodLog: vi.fn(),
   getOrCreatePreferences: vi.fn(),
+  getOrCreateRelationship: vi.fn(),
   getRecentMessages: vi.fn(),
   openDailyCheckIn: vi.fn(),
   saveGameSession: vi.fn(),
   saveYoutubeSession: vi.fn(),
+  setRelationshipTone: vi.fn(),
   toggleMessageReaction: vi.fn(),
   updatePreferences: vi.fn(),
 }));
@@ -91,5 +93,23 @@ describe("Maya protected companion APIs", () => {
 
     await expect(caller().maya.openDailyCheckIn({ checkInDate: "2026-08-19" })).resolves.toMatchObject({ created: true });
     expect(dbMocks.openDailyCheckIn).toHaveBeenCalledWith(42, "2026-08-19");
+  });
+
+  it("stores a companion tone only against the signed-in user", async () => {
+    dbMocks.setRelationshipTone.mockResolvedValue({ preferredTone: "playful and cheeky" });
+
+    await expect(caller().maya.setCompanionTone({ tone: "playful and cheeky" })).resolves.toMatchObject({ preferredTone: "playful and cheeky" });
+    expect(dbMocks.setRelationshipTone).toHaveBeenCalledWith(42, "playful and cheeky");
+  });
+
+  it("returns the signed-in user’s persisted companion tone in the bootstrap payload", async () => {
+    dbMocks.getRecentMessages.mockResolvedValue([]);
+    dbMocks.getOrCreatePreferences.mockResolvedValue({ theme: "violet", voiceStyle: 0 });
+    dbMocks.getMoodLog.mockResolvedValue([]);
+    dbMocks.getDailyCheckIns.mockResolvedValue([]);
+    dbMocks.getOrCreateRelationship.mockResolvedValue({ preferredTone: "quiet and spacious", rapportScore: 9 });
+
+    await expect(caller().maya.bootstrap()).resolves.toMatchObject({ relationship: { preferredTone: "quiet and spacious" } });
+    expect(dbMocks.getOrCreateRelationship).toHaveBeenCalledWith(42);
   });
 });

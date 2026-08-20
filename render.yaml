@@ -14,16 +14,14 @@ services:
         sync: false
       - key: SUPABASE_SECRET_KEY
         sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: VITE_APP_ID
-        sync: false
-      - key: VITE_OAUTH_PORTAL_URL
-        sync: false
-      - key: OAUTH_SERVER_URL
-        sync: false
       - key: OWNER_OPEN_ID
         sync: false
       - key: OWNER_NAME

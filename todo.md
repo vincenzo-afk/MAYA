@@ -92,3 +92,12 @@
 - [x] Replace the broken Maya avatar fallback seen in the checkpoint preview with a deliberate branded avatar treatment when the external image is unavailable.
 - [x] Replace the retired storage-backed default Maya avatar with a local branded fallback that never invokes the media proxy.
 - [x] Make Maya’s avatar fallback react safely when a later user-selected display image replaces the default source.
+- [ ] Replace Manus OAuth with a single Supabase email-verification sign-in path while preserving server-side per-user authorization for all Maya data.
+- [ ] Verify or configure the Supabase Auth redirect allow-list for `https://maya-companion.onrender.com`.
+- [ ] Complete the email-link sign-in flow on the live Render service and confirm its Maya session accesses private companion data.
+- [x] Refine Maya’s prompt and stream emotion inference for varied, natural, emotionally responsive companion conversation.
+- [x] Remove artificial reply emphasis and require an explicit user action before text-to-speech playback outside a voice call.
+- [x] Add private, free Connection controls for tone, a daily win, and lightweight reflective prompts.
+- [x] Add regression tests for tone preference, emotion inference, speech-cancellation behavior, and connection persistence.
+- [x] Verify that a persisted companion tone is returned in the signed-in Maya bootstrap payload.
+- [x] Add deterministic regression coverage for Connection little-win and prompt-starter message construction.

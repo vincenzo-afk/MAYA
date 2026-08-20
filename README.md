@@ -46,7 +46,7 @@ The companion experience is personalized per user. The application persists mess
 | Voice | Recorded voice notes uploaded to storage and transcribed server-side; browser speech synthesis with ten selectable voice styles; browser speech-recognition call mode where supported. |
 | Expressive messages | Emoji reactions, GIFs, and stickers inside the private companion conversation. |
 | Shared activities | Chess, Sudoku, tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteasers, a math prompt, calendar/day lookup, a browser voice game, and YouTube co-watch. Competitive games include visible thinking turns and friendly Maya policies that leave the user meaningful opportunities to win. [10] |
-| Privacy boundary | Manus OAuth authentication and user-scoped database procedures for companion data. |
+| Privacy boundary | Supabase email magic-link verification, a first-party signed session cookie, and user-scoped database procedures for companion data. |
 
 > **Companion boundary:** Maya’s prompt explicitly discloses that she is AI when asked, avoids claims of physical life or consciousness, and directs crisis content toward local emergency support and trusted people. [2]
 
@@ -54,7 +54,7 @@ The companion experience is personalized per user. The application persists mess
 
 ## <a name="architecture"></a>Architecture
 
-The React client communicates with the tRPC API under `/api/trpc`. Text chat uses a dedicated authenticated SSE endpoint at `/api/maya/stream`, allowing the user message, response deltas, and final stored Maya message to arrive progressively. Express serves the OAuth callback and the private storage proxy; the server uses Supabase PostgreSQL and Storage for user-scoped records and media.
+The React client communicates with the tRPC API under `/api/trpc`. Text chat uses a dedicated authenticated SSE endpoint at `/api/maya/stream`, allowing the user message, response deltas, and final stored Maya message to arrive progressively. Express sends and completes Supabase email verification links, then sets a first-party signed session cookie; the server uses Supabase PostgreSQL and Storage for user-scoped records and media.
 
 ```mermaid
 flowchart LR
@@ -66,7 +66,7 @@ flowchart LR
   R --> E[Express + tRPC]
   S --> E
   V --> E
-  E --> O[Manus OAuth session]
+  E --> A[Supabase email verification]
   E --> L[Groq chat completion]
   E --> T[Groq Whisper transcription]
   E --> ST[Supabase Storage]
@@ -120,16 +120,13 @@ The application expects its runtime configuration to be injected by the Manus pr
 
 | Variable | Used for | Required locally |
 |---|---|---|
-| `DATABASE_URL` | Drizzle/MySQL connection string and migration generation. | Yes, for persistence and migrations. |
-| `JWT_SECRET` | Signing the Maya session cookie. | Yes, for OAuth-backed sessions. |
-| `VITE_APP_ID` | Manus application identifier used by the OAuth client/server flow. | Yes, for Manus sign-in. |
-| `OAUTH_SERVER_URL` | Manus OAuth service base URL. | Yes, for Manus sign-in. |
+| `SUPABASE_URL` | Server-side Supabase project URL for database, storage, and Auth operations. | Yes. |
+| `SUPABASE_SECRET_KEY` | Server-only Supabase secret key. Never expose it to the browser. | Yes. |
+| `VITE_SUPABASE_URL` | Browser-visible Supabase project URL used only to complete an email verification link. | Yes. |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Browser-visible Supabase publishable key used only to read the email-link session. | Yes. |
+| `GROQ_API_KEY` | Server-only Groq key for streaming chat and Whisper transcription. | Yes. |
+| `JWT_SECRET` | Signs Maya’s first-party session cookie after Supabase verifies the user’s email link. | Yes. |
 | `OWNER_OPEN_ID` | Identifies the project owner for role assignment. | Required by the platform configuration. |
-| `BUILT_IN_FORGE_API_URL` | Forge API base URL for AI, storage, and related services. | Yes, for managed AI services. |
-| `BUILT_IN_FORGE_API_KEY` | Server-side Forge authorization. | Yes, for managed AI services. |
-| `VITE_FRONTEND_FORGE_API_URL` | Frontend Forge API base URL. | Required by the generated client integration. |
-| `VITE_FRONTEND_FORGE_API_KEY` | Frontend Forge API key. | Required by the generated client integration. |
-| `VITE_OAUTH_PORTAL_URL` | Browser login portal location. | Required by the generated client integration. |
 | `PORT` | Preferred HTTP port; defaults to `3000` if unset. | Optional. |
 | `NODE_ENV` | Controls development Vite middleware versus production static serving. | Optional; scripts set it. |
 
@@ -156,7 +153,7 @@ The development command runs `tsx watch server/_core/index.ts`. The server choos
 ### Start a private conversation
 
 1. Open the local app and select **Meet Maya**.
-2. Complete the Manus OAuth flow.
+2. Enter an email address and use the secure sign-in link Maya sends you.
 3. Send a message. Maya streams her reply while keeping the completed conversation and relevant context in the authenticated user’s account.
 
 ### Use voice features
@@ -175,13 +172,15 @@ Open the activities drawer to play chess, Sudoku, tic-tac-toe, **Ludo**, **Snake
 
 ## <a name="api-reference"></a>API Reference
 
-All procedures under `maya.*` are protected by Manus authentication. The generated React client calls them through the tRPC transport at `/api/trpc`; this repository does not provide a public, unauthenticated REST API. [12]
+All procedures under `maya.*` require the first-party session created after Supabase email verification. The React client calls them through the tRPC transport at `/api/trpc`; this repository does not provide a public, unauthenticated REST API. [12]
 
 ### Live chat stream
 
 | Method | Path | Authentication | Behavior |
 |---|---|---|---|
-| `POST` | `/api/maya/stream` | Manus session | Accepts `{ "content": "..." }` with 1–4,000 characters and returns SSE events: `user`, `delta`, `done`, or `error`. [4] |
+| `POST` | `/api/auth/request-email-verification` | Public | Sends a Supabase magic link to a valid email address. [14] |
+| `POST` | `/api/auth/complete-email-verification` | Supabase access token in request body | Verifies the token with Supabase, upserts the user, and creates the Maya session cookie. [14] |
+| `POST` | `/api/maya/stream` | Verified Maya email session | Accepts `{ "content": "..." }` with 1–4,000 characters and returns SSE events: `user`, `delta`, `done`, or `error`. [4] |
 
 ### Companion procedures
 
@@ -208,7 +207,7 @@ The schema models each companion artifact by `userId` and indexes common history
 
 | Table | Responsibility |
 |---|---|
-| `users` | Manus OAuth identity and role fields. |
+| `users` | Supabase Auth identity, email, and role fields. |
 | `maya_messages` | User and Maya messages, type, optional media URL, emotion, and reactions. |
 | `maya_memories` | Durable memory facts, categories, relevance, and update timestamps. |
 | `maya_mood_logs` | Detected user mood, Maya emotion, intensity, and optional check-in session link. |
@@ -242,8 +241,8 @@ MAYA/
 ├── server/
 │   ├── _core/
 │   │   ├── index.ts                  # Express server, SSE stream, tRPC mount
-│   │   ├── oauth.ts                  # Manus OAuth callback
-│   │   ├── llm.ts                    # Forge-compatible LLM client
+│   │   ├── emailAuth.ts              # Supabase magic-link and local session routes
+│   │   ├── sdk.ts                    # First-party email-session verification
 │   │   └── voiceTranscription.ts     # Server-side transcription client
 │   ├── routers/maya.ts               # Protected companion procedures
 │   ├── db.ts                         # Drizzle data-access helpers
@@ -261,7 +260,7 @@ MAYA/
 
 ### Implemented
 
-- ✅ Authenticated private companion data and Manus OAuth flow.
+- ✅ Authenticated private companion data using one Supabase email-verification flow.
 - ✅ Streaming emotional text chat with persisted context and relationship state.
 - ✅ Server-side voice-note transcription and media storage.
 - ✅ Browser voice-call mode and ten playback-style presets.
@@ -286,7 +285,7 @@ pnpm test
 pnpm check
 ```
 
-The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, Supabase media storage, Groq transcription, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, saved-session error feedback, and regression coverage confirming the image-generation procedure is absent and the branded avatar fallback safely transitions to a valid custom source. The current suite contains **eight passing test files and fifty-one tests**, plus one opt-in live-credential test that is skipped by default.
+The project uses Vitest. The committed suite covers email-normalization helpers, session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, Supabase media storage, Groq transcription, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, saved-session error feedback, and regression coverage confirming the image-generation procedure is absent and the branded avatar fallback safely transitions to a valid custom source. The validated release suite contains **nine passing test files and fifty-three tests**, plus two opt-in credential/configuration tests skipped by default.
 
 Format source files with:
 
@@ -330,7 +329,7 @@ No separate `CONTRIBUTING.md` or code-of-conduct file is currently committed.
 
 ## <a name="security"></a>Security
 
-Maya uses Manus OAuth for identity and protects companion procedures with the server’s `protectedProcedure`. The OAuth callback validates the one-time state/nonce before exchanging the authorization code, upserts the user, and creates the session. Companion procedure inputs are validated with Zod; recorded voice-note payloads are limited to 16 MB before transcription. [8] [12] [14]
+Maya uses Supabase email magic-link verification for identity and protects companion procedures with the server’s `protectedProcedure`. The browser exchanges the email-link session with the server, which verifies the Supabase access token, upserts the user, and issues a first-party signed session cookie. The session verifier accepts only this email-session format; legacy platform sessions are rejected. Companion procedure inputs are validated with Zod; recorded voice-note payloads are limited to 16 MB before transcription. [8] [12] [14]
 
 Keep all service credentials in managed environment settings. Do not commit API keys, OAuth secrets, database URLs, session secrets, or recorded user content. If you discover a vulnerability, report it privately to the repository owner rather than opening a public issue with reproduction details.
 
@@ -371,4 +370,4 @@ Maya is built with the React, Express, tRPC, Drizzle, Vitest, Tailwind CSS, and 
 [11]: ./client/src/components/MayaActivities.tsx
 [12]: ./server/routers.ts
 [13]: ./server/mayaBrain.test.ts
-[14]: ./server/_core/oauth.ts
+[14]: ./server/_core/emailAuth.ts

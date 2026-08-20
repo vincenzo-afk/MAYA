@@ -1,12 +1,12 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
+import { completeEmailVerificationFromUrl } from "@/lib/supabaseEmailAuth";
+import { buildLittleWinMessage, pickConnectionPrompt } from "@/lib/mayaConnectionUtils";
 import MayaActivities from "@/components/MayaActivities";
 import { MayaContextDrawer } from "@/components/MayaContextDrawer";
 import { trpc } from "@/lib/trpc";
 import { shouldUseMayaAvatarFallback } from "@/lib/mayaAvatarUtils";
 import { closeMayaCall, prepareMayaListening, resolveMayaRecognition, stopMayaListening } from "@/lib/mayaCallControls";
 import { applyMayaTheme, canSpeakWith, deliveryStatusLabel, MAYA_VOICE_STYLES, preferredAudioMimeType, safelyCancelSpeech, selectedVoiceSettings, shouldVisuallyGroupMessages } from "@/lib/mayaChatUtils";
-import { COOKIE_NAME } from "@shared/const";
 import {
   ArrowUp,
   CheckCheck,
@@ -58,6 +58,14 @@ type LocalMessage = {
 
 type ContextPanel = "chat" | "memories" | "mood";
 type ThemeName = "violet" | "rose" | "ocean" | "sunset";
+type CompanionTone = "soft and reassuring" | "playful and cheeky" | "honest and direct" | "quiet and spacious";
+
+const COMPANION_TONES: Array<{ tone: CompanionTone; label: string; description: string }> = [
+  { tone: "soft and reassuring", label: "Soft", description: "Gentle and comforting" },
+  { tone: "playful and cheeky", label: "Playful", description: "Warm mischief, lightly" },
+  { tone: "honest and direct", label: "Honest", description: "Clear, kind, no fluff" },
+  { tone: "quiet and spacious", label: "Quiet", description: "More room to think" },
+];
 
 function shortTime(value?: Date | string) {
   if (!value) return "now";
@@ -112,6 +120,7 @@ export default function MayaCompanion() {
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showActivities, setShowActivities] = useState(false);
+  const [showConnection, setShowConnection] = useState(false);
   const [showCall, setShowCall] = useState(false);
   const [voiceStyle, setVoiceStyle] = useState(0);
   const [selectedTheme, setSelectedTheme] = useState<ThemeName>("violet");
@@ -123,6 +132,11 @@ export default function MayaCompanion() {
   const [isListening, setIsListening] = useState(false);
   const [callStatus, setCallStatus] = useState<"ready" | "listening" | "thinking" | "speaking">("ready");
   const [speechVoices, setSpeechVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [showEmailSignIn, setShowEmailSignIn] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [isEmailPending, setIsEmailPending] = useState(false);
+  const [littleWin, setLittleWin] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -135,10 +149,12 @@ export default function MayaCompanion() {
   const mediaMutation = trpc.maya.sendMedia.useMutation();
   const dailyCheckInMutation = trpc.maya.openDailyCheckIn.useMutation();
   const preferencesMutation = trpc.maya.updatePreferences.useMutation();
+  const companionToneMutation = trpc.maya.setCompanionTone.useMutation();
 
   const mayaPhoto = bootstrap.data?.preferences?.displayPhoto;
   const latestMaya = [...messages].reverse().find((message) => message.role === "maya");
   const activeMood = latestMaya?.emotion || "calm";
+  const companionTone = (bootstrap.data?.relationship?.preferredTone || "soft and reassuring") as CompanionTone;
   const userFirstName = user?.name?.split(" ")[0] || "there";
   const chatPreview = messages.length ? messages[messages.length - 1].content || "Maya is writing…" : "Tap to start a private conversation";
 
@@ -165,6 +181,11 @@ export default function MayaCompanion() {
     window.speechSynthesis?.addEventListener?.("voiceschanged", hydrateVoices);
     return () => window.speechSynthesis?.removeEventListener?.("voiceschanged", hydrateVoices);
   }, []);
+  useEffect(() => {
+    void completeEmailVerificationFromUrl().then((completed) => {
+      if (completed) void utils.auth.me.invalidate();
+    }).catch((error) => toast.error(error instanceof Error ? error.message : "Email verification could not be completed."));
+  }, [utils.auth.me]);
   useEffect(() => () => {
     if (streamTimerRef.current) clearTimeout(streamTimerRef.current);
     recognitionRef.current?.stop?.();
@@ -184,14 +205,6 @@ export default function MayaCompanion() {
     utterance.onstart = () => setCallStatus("speaking");
     utterance.onend = () => setCallStatus("ready");
     synthesis.speak(utterance);
-  };
-
-  const getPreviewToken = () => {
-    try {
-      const raw = sessionStorage.getItem("manus-cookie");
-      const pair = raw?.split(";").find((value) => value.trim().startsWith(`${COOKIE_NAME}=`));
-      return pair?.trim().slice(`${COOKIE_NAME}=`.length) || null;
-    } catch { return null; }
   };
 
   const streamMayaMessage = (message: LocalMessage, speakAfter = false) => {
@@ -226,10 +239,7 @@ export default function MayaCompanion() {
     if (showCall) setCallStatus("thinking");
     let assistantStarted = false;
     try {
-      const headers: Record<string, string> = { "content-type": "application/json" };
-      const previewToken = getPreviewToken();
-      if (previewToken) headers.Authorization = `Bearer ${previewToken}`;
-      const response = await fetch("/api/maya/stream", { method: "POST", credentials: "include", headers, body: JSON.stringify({ content: trimmed }) });
+      const response = await fetch("/api/maya/stream", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: trimmed }) });
       if (!response.ok || !response.body) throw new Error((await response.json().catch(() => ({ error: "Maya needs a moment." }))).error);
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -316,6 +326,27 @@ export default function MayaCompanion() {
     preferencesMutation.mutate({ theme }, { onError: () => toast.error("Theme preference could not be saved.") });
   };
 
+  const changeCompanionTone = (tone: CompanionTone) => {
+    companionToneMutation.mutate({ tone }, {
+      onSuccess: () => { void utils.maya.bootstrap.invalidate(); toast.success(`Maya will keep things ${tone}.`); },
+      onError: (error) => toast.error(error.message || "Maya couldn't save that tone right now."),
+    });
+  };
+
+  const shareLittleWin = () => {
+    const win = littleWin.trim();
+    if (!win) return;
+    setLittleWin("");
+    setShowConnection(false);
+    void submitMessage(buildLittleWinMessage(win));
+  };
+
+  const startConnectionPrompt = () => {
+    const prompt = pickConnectionPrompt();
+    setShowConnection(false);
+    void submitMessage(prompt);
+  };
+
   const stopRecording = () => { if (recorderRef.current?.state === "recording") recorderRef.current.stop(); };
   const toggleRecording = async () => {
     if (isRecording) { stopRecording(); return; }
@@ -334,7 +365,7 @@ export default function MayaCompanion() {
         reader.onloadend = () => {
           if (typeof reader.result !== "string") return;
           voiceMutation.mutate({ audioData: reader.result, fileName: "maya-voice-note.webm", language: "en" }, {
-            onSuccess: (result) => addReplyPair(result, true),
+            onSuccess: (result) => addReplyPair(result, false),
             onError: (error) => toast.error(error.message || "Maya couldn't process that voice note. Please try again."),
           });
         };
@@ -369,15 +400,30 @@ export default function MayaCompanion() {
 
   const drawerContent = activePanel !== "chat" ? <MayaContextDrawer panel={activePanel} messages={bootstrap.data?.messages || []} moodEntries={bootstrap.data?.mood?.slice(0, 14) || []} sessions={bootstrap.data?.dailyCheckIns || []} onDailyCheckIn={startDailyCheckIn} /> : null;
 
+  const requestEmailVerification = async () => {
+    setIsEmailPending(true);
+    setEmailStatus(null);
+    try {
+      const response = await fetch("/api/auth/request-email-verification", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Maya could not send that email.");
+      setEmailStatus("Check your inbox for Maya’s secure sign-in link.");
+    } catch (error) {
+      setEmailStatus(error instanceof Error ? error.message : "Maya could not send that email.");
+    } finally {
+      setIsEmailPending(false);
+    }
+  };
+
   if (isAuthenticated && loading) return <div className="maya-loading"><Loader2 className="animate-spin"/><span>Opening Maya…</span></div>;
-  if (!isAuthenticated) return <main className="maya-landing"><section className="maya-landing-card"><div className="maya-brand"><span className="maya-spark"><Sparkles size={17}/></span> maya</div><div className="maya-hero-content"><Avatar mood="joyful" size="lg"/><div><span className="maya-eyebrow">YOUR COMPANION, AT YOUR PACE</span><h1>A little more <em>seen.</em><br/>A little less alone.</h1><p>Maya is a warm AI companion for real conversations, voice notes, games, and small things worth remembering.</p><button className="maya-primary-button" onClick={() => startLogin()}>Meet Maya <ArrowUp size={17}/></button><p className="maya-privacy-note"><Info size={14}/> Private to your account. Maya is an AI companion, not emergency or professional support.</p></div></div></section></main>;
+  if (!isAuthenticated) return <main className="maya-landing"><section className="maya-landing-card"><div className="maya-brand"><span className="maya-spark"><Sparkles size={17}/></span> maya</div><div className="maya-hero-content"><Avatar mood="joyful" size="lg"/><div><span className="maya-eyebrow">YOUR COMPANION, AT YOUR PACE</span><h1>A little more <em>seen.</em><br/>A little less alone.</h1><p>Maya is a warm AI companion for real conversations, voice notes, games, and small things worth remembering.</p><button className="maya-primary-button" onClick={() => setShowEmailSignIn(true)}>Meet Maya <ArrowUp size={17}/></button><p className="maya-privacy-note"><Info size={14}/> One secure email link is all you need. Maya is an AI companion, not emergency or professional support.</p></div></div></section>{showEmailSignIn && <div className="maya-modal-backdrop"><section className="maya-modal maya-settings-modal" role="dialog" aria-modal="true" aria-label="Sign in with email"><button className="maya-close" onClick={() => setShowEmailSignIn(false)} aria-label="Close"><X size={18}/></button><span className="maya-eyebrow">ONE PRIVATE SIGN-IN</span><h2>Verify your email</h2><p>We’ll send one secure sign-in link. No passwords and no other login methods.</p><input className="maya-email-input" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" aria-label="Email address"/><button className="maya-primary-button" disabled={isEmailPending || !email.trim()} onClick={() => void requestEmailVerification()}>{isEmailPending ? "Sending…" : "Send secure link"}</button>{emailStatus && <p className="maya-privacy-note">{emailStatus}</p>}</section></div>}</main>;
 
   return <main className="maya-messenger">
     <aside className="maya-chat-list" aria-label="Conversations">
       <header><div className="maya-brand"><span className="maya-spark"><Sparkles size={16}/></span> maya</div><button className="maya-list-settings" onClick={() => setShowSettings(true)} aria-label="Open settings"><Settings2 size={18}/></button></header>
       <div className="maya-list-title"><h2>Chats</h2><span>1</span></div>
       <button className="maya-conversation active" onClick={() => setActivePanel("chat")}><Avatar src={mayaPhoto} mood={activeMood} size="md"/><span className="maya-conversation-copy"><strong>Maya</strong><small>{isStreaming ? "Maya is typing…" : chatPreview}</small></span><time>{messages.length ? shortTime(messages[messages.length - 1].createdAt) : ""}</time></button>
-      <div className="maya-list-utilities"><button onClick={() => setActivePanel("memories")}><Heart size={17}/> Memories</button><button onClick={() => setActivePanel("mood")}><Waves size={17}/> Mood journal</button><button onClick={startDailyCheckIn}><Lightbulb size={17}/> Daily check-in</button></div>
+      <div className="maya-list-utilities"><button onClick={() => setActivePanel("memories")}><Heart size={17}/> Memories</button><button onClick={() => setActivePanel("mood")}><Waves size={17}/> Mood journal</button><button onClick={startDailyCheckIn}><Lightbulb size={17}/> Daily check-in</button><button onClick={() => setShowConnection(true)}><MessageCircleHeart size={17}/> Connection</button></div>
       <p className="maya-list-footnote">Your companion chat is private to your signed-in account.</p>
     </aside>
 
@@ -391,7 +437,7 @@ export default function MayaCompanion() {
           {message.kind === "activity" && message.content.startsWith("Sticker:") && <div className="maya-sticker">{message.content.replace("Sticker: ", "")}</div>}
           {message.kind === "voice" && message.role === "user" && <div className="maya-voice-label"><Waves size={14}/> Voice note · transcribed by Maya</div>}
           {message.kind !== "activity" && <p>{message.content || (message.role === "maya" && isStreaming ? <span className="maya-typing">Maya is typing</span> : "")}</p>}
-        </div><div className="maya-message-meta"><span>{shortTime(message.createdAt)}</span>{message.role === "user" && <span className={message.status === "failed" ? "maya-message-failed" : "maya-delivery"} aria-label={deliveryStatusLabel(message.status)} title={deliveryStatusLabel(message.status)}>{message.status === "pending" ? <Clock3 size={12}/> : message.status === "failed" ? "Not sent" : <CheckCheck size={14}/>}</span>}</div><div className="maya-reactions"><div className="maya-reaction-chips">{message.reactions?.map((reaction, reactionIndex) => <span key={`${reaction}-${reactionIndex}`}>{reaction}</span>)}</div><button className="maya-add-reaction" onClick={() => setReactionTarget(reactionTarget === message.id ? null : message.id)} aria-label="Add reaction" aria-expanded={reactionTarget === message.id}>+</button>{reactionTarget === message.id && <div className="maya-reaction-picker" role="group" aria-label="Choose a reaction">{EMOJI_REACTIONS.map((emoji) => <button key={emoji} onClick={() => reactToMessage(message.id, emoji)} aria-label={`React ${emoji}`}>{emoji}</button>)}</div>}</div></div></article></Fragment>)}
+        </div><div className="maya-message-meta">{message.role === "maya" && message.content && !(isStreaming && index === messages.length - 1) && <button className="maya-listen-button" onClick={() => speak(message.content)} aria-label="Listen to Maya's reply"><Play size={11}/> Listen</button>}<span>{shortTime(message.createdAt)}</span>{message.role === "user" && <span className={message.status === "failed" ? "maya-message-failed" : "maya-delivery"} aria-label={deliveryStatusLabel(message.status)} title={deliveryStatusLabel(message.status)}>{message.status === "pending" ? <Clock3 size={12}/> : message.status === "failed" ? "Not sent" : <CheckCheck size={14}/>}</span>}</div><div className="maya-reactions"><div className="maya-reaction-chips">{message.reactions?.map((reaction, reactionIndex) => <span key={`${reaction}-${reactionIndex}`}>{reaction}</span>)}</div><button className="maya-add-reaction" onClick={() => setReactionTarget(reactionTarget === message.id ? null : message.id)} aria-label="Add reaction" aria-expanded={reactionTarget === message.id}>+</button>{reactionTarget === message.id && <div className="maya-reaction-picker" role="group" aria-label="Choose a reaction">{EMOJI_REACTIONS.map((emoji) => <button key={emoji} onClick={() => reactToMessage(message.id, emoji)} aria-label={`React ${emoji}`}>{emoji}</button>)}</div>}</div></div></article></Fragment>)}
         {voiceMutation.isPending && <div className="maya-pending"><Avatar src={mayaPhoto} mood="curious" size="sm"/><span><i/><i/><i/></span></div>}
         {failedText && <div className="maya-retry-row"><span>Message not delivered.</span><button onClick={() => void submitMessage(failedText)}>Try again <RotateCcw size={13}/></button></div>}
         <div ref={bottomRef}/>
@@ -402,7 +448,9 @@ export default function MayaCompanion() {
 
     {activePanel !== "chat" && <aside className="maya-context-drawer"><button className="maya-drawer-close" onClick={() => setActivePanel("chat")} aria-label="Close panel"><X size={19}/></button>{drawerContent}</aside>}
 
-    {showSettings && <div className="maya-modal-backdrop" onMouseDown={() => setShowSettings(false)}><section className="maya-modal maya-settings-modal" role="dialog" aria-modal="true" aria-label="Chat settings" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowSettings(false)} aria-label="Close settings"><X size={18}/></button><div className="maya-drawer-heading"><Settings2 size={18}/><div><h2>Chat settings</h2><p>Personalize Maya’s space without losing sight of the conversation.</p></div></div><div className="maya-settings-section"><span>Theme</span><div className="maya-theme-swatches">{(["violet", "rose", "ocean", "sunset"] as ThemeName[]).map((theme) => <button key={theme} className={`theme-${theme} ${selectedTheme === theme ? "selected" : ""}`} onClick={() => changeTheme(theme)} aria-label={`${theme} theme`} aria-pressed={selectedTheme === theme}/>)}</div></div><div className="maya-settings-section"><span>Maya’s voice</span><button className="maya-setting-row" onClick={() => setShowVoicePicker(true)} aria-haspopup="dialog"><Volume2 size={17}/><span>{MAYA_VOICE_STYLES[voiceStyle].name}</span><ChevronRight size={16}/></button></div><div className="maya-settings-section"><span>Private by design</span><p>Chat history, memories, journal entries, preferences, and activity sessions are scoped to your signed-in account.</p></div></section></div>}
+    {showSettings && <div className="maya-modal-backdrop" onMouseDown={() => setShowSettings(false)}><section className="maya-modal maya-settings-modal" role="dialog" aria-modal="true" aria-label="Chat settings" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowSettings(false)} aria-label="Close settings"><X size={18}/></button><div className="maya-drawer-heading"><Settings2 size={18}/><div><h2>Chat settings</h2><p>Personalize Maya’s space without losing sight of the conversation.</p></div></div><div className="maya-settings-section"><span>Theme</span><div className="maya-theme-swatches">{(["violet", "rose", "ocean", "sunset"] as ThemeName[]).map((theme) => <button key={theme} className={`theme-${theme} ${selectedTheme === theme ? "selected" : ""}`} onClick={() => changeTheme(theme)} aria-label={`${theme} theme`} aria-pressed={selectedTheme === theme}/>)}</div></div><div className="maya-settings-section"><span>Maya’s voice</span><button className="maya-setting-row" onClick={() => setShowVoicePicker(true)} aria-haspopup="dialog"><Volume2 size={17}/><span>{MAYA_VOICE_STYLES[voiceStyle].name}</span><ChevronRight size={16}/></button></div><div className="maya-settings-section"><span>Connection</span><button className="maya-setting-row" onClick={() => { setShowSettings(false); setShowConnection(true); }}><MessageCircleHeart size={17}/><span>Conversation tone and little wins</span><ChevronRight size={16}/></button></div><div className="maya-settings-section"><span>Private by design</span><p>Chat history, memories, journal entries, preferences, and activity sessions are scoped to your signed-in account.</p></div></section></div>}
+
+    {showConnection && <div className="maya-modal-backdrop" onMouseDown={() => setShowConnection(false)}><section className="maya-modal maya-connection-modal" role="dialog" aria-modal="true" aria-label="Connection space" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowConnection(false)} aria-label="Close connection space"><X size={18}/></button><span className="maya-eyebrow">CONNECTION</span><h2>Make this chat feel more like yours.</h2><p>These small settings stay private to your Maya account.</p><div className="maya-settings-section"><span>How Maya should sound</span><div className="maya-tone-grid">{COMPANION_TONES.map((option) => <button key={option.tone} className={companionTone === option.tone ? "selected" : ""} onClick={() => changeCompanionTone(option.tone)} aria-pressed={companionTone === option.tone}><strong>{option.label}</strong><small>{option.description}</small></button>)}</div></div><div className="maya-settings-section"><span>Today’s little win</span><textarea value={littleWin} onChange={(event) => setLittleWin(event.target.value)} maxLength={300} placeholder="Something small that went right…" aria-label="Today’s little win"/><button className="maya-primary-button" disabled={!littleWin.trim()} onClick={shareLittleWin}>Share with Maya <ArrowUp size={16}/></button></div><div className="maya-settings-section"><span>One small prompt</span><p>Want a fresh way into the conversation?</p><button className="maya-connection-prompt" onClick={startConnectionPrompt}>Give us a good question <Sparkles size={16}/></button></div></section></div>}
 
     {showVoicePicker && <div className="maya-modal-backdrop" onMouseDown={() => setShowVoicePicker(false)}><section className="maya-modal maya-voice-modal" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowVoicePicker(false)}><X size={18}/></button><span className="maya-eyebrow">MAYA’S VOICE</span><h2>How should she sound?</h2><p>Choose one of ten expressive styles. Your browser selects the closest available local voice.</p><div className="maya-voice-grid">{MAYA_VOICE_STYLES.map((voice, index) => <button key={voice.name} className={voiceStyle === index ? "selected" : ""} onClick={() => updateVoiceStyle(index)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{voice.name}</strong><small>{voice.tagline}</small><Play size={14}/></button>)}</div></section></div>}
 

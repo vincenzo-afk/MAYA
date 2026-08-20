@@ -280,6 +280,16 @@ export async function updateRelationship(userId: number, input: { mood: string; 
   assertResult(undefined, error, "update relationship memory");
 }
 
+export async function setRelationshipTone(userId: number, tone: string) {
+  await getOrCreateRelationship(userId);
+  const { error } = await getSupabaseServerClient().from("maya_relationships").update({
+    preferred_tone: tone.slice(0, 64),
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", userId);
+  assertResult(undefined, error, "save companion tone");
+  return getOrCreateRelationship(userId);
+}
+
 export async function saveGameSession(userId: number, gameType: MayaGameType, state: Record<string, unknown>, result?: string) {
   const { error } = await getSupabaseServerClient().from("maya_game_sessions").insert({ user_id: userId, game_type: gameType, state, result: result?.slice(0, 32) ?? null, updated_at: new Date().toISOString() });
   assertResult(undefined, error, "save the activity session");
