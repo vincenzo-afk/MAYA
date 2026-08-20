@@ -286,7 +286,7 @@ pnpm test
 pnpm check
 ```
 
-The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, Supabase media storage, Groq transcription, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, saved-session error feedback, and regression coverage confirming the image-generation procedure is absent. The current suite contains **eight passing test files and fifty tests**, plus one opt-in live-credential test that is skipped by default.
+The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, Supabase media storage, Groq transcription, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, saved-session error feedback, and regression coverage confirming the image-generation procedure is absent and the branded avatar fallback safely transitions to a valid custom source. The current suite contains **eight passing test files and fifty-one tests**, plus one opt-in live-credential test that is skipped by default.
 
 Format source files with:
 

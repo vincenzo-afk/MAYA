@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyMayaTheme, canSpeakWith, deliveryStatusLabel, preferredAudioMimeType, safelyCancelSpeech, selectedVoiceSettings, shouldVisuallyGroupMessages, voicePreviewText } from "../client/src/lib/mayaChatUtils";
+import { shouldUseMayaAvatarFallback } from "../client/src/lib/mayaAvatarUtils";
 import { closeMayaCall, prepareMayaListening, resolveMayaRecognition, stopMayaListening } from "../client/src/lib/mayaCallControls";
 import { MayaContextDrawer } from "../client/src/components/MayaContextDrawer";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -71,6 +72,12 @@ describe("Maya chat speech safety", () => {
 
   it("maps the selected voice to its playback settings and deterministic browser voice index", () => {
     expect(selectedVoiceSettings(7, 3)).toMatchObject({ styleIndex: 7, voiceIndex: 1, rate: 0.98, pitch: 1.18 });
+  });
+
+  it("uses the local Maya monogram until a valid custom avatar source becomes available", () => {
+    expect(shouldUseMayaAvatarFallback(undefined)).toBe(true);
+    expect(shouldUseMayaAvatarFallback("   ")).toBe(true);
+    expect(shouldUseMayaAvatarFallback("https://cdn.example.com/maya.jpg")).toBe(false);
   });
 
   it("renders both responsive context drawer content paths", () => {

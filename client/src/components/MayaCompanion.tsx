@@ -3,6 +3,7 @@ import { startLogin } from "@/const";
 import MayaActivities from "@/components/MayaActivities";
 import { MayaContextDrawer } from "@/components/MayaContextDrawer";
 import { trpc } from "@/lib/trpc";
+import { shouldUseMayaAvatarFallback } from "@/lib/mayaAvatarUtils";
 import { closeMayaCall, prepareMayaListening, resolveMayaRecognition, stopMayaListening } from "@/lib/mayaCallControls";
 import { applyMayaTheme, canSpeakWith, deliveryStatusLabel, MAYA_VOICE_STYLES, preferredAudioMimeType, safelyCancelSpeech, selectedVoiceSettings, shouldVisuallyGroupMessages } from "@/lib/mayaChatUtils";
 import { COOKIE_NAME } from "@shared/const";
@@ -33,8 +34,6 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-
-const DEFAULT_MAYA_PHOTO = "/manus-storage/maya-avatar_bec413f2.jpg";
 
 const EMOJI_REACTIONS = ["♥", "😊", "✨", "😂", "🥹"];
 const GIF_CHOICES = [
@@ -87,9 +86,19 @@ function cleanForSpeech(text: string) {
   return text.replace(/[*_`#]/g, "").replace(/\[(.*?)\]\(.*?\)/g, "$1");
 }
 
-function Avatar({ src, mood = "calm", size = "md" }: { src: string; mood?: string | null; size?: "sm" | "md" | "lg" }) {
+function Avatar({ src, mood = "calm", size = "md" }: { src?: string | null; mood?: string | null; size?: "sm" | "md" | "lg" }) {
+  const [imageUnavailable, setImageUnavailable] = useState(() => shouldUseMayaAvatarFallback(src));
   const dimensions = size === "sm" ? "h-10 w-10" : size === "lg" ? "h-32 w-32" : "h-12 w-12";
-  return <div className={`relative shrink-0 ${dimensions}`}><img src={src} alt="Maya" className="h-full w-full rounded-full object-cover" /><span className={`maya-mood-dot maya-mood-${mood?.toLowerCase() || "calm"}`} /></div>;
+  const monogramSize = size === "sm" ? "text-base" : size === "lg" ? "text-5xl" : "text-xl";
+  useEffect(() => setImageUnavailable(shouldUseMayaAvatarFallback(src)), [src]);
+  return <div className={`relative shrink-0 ${dimensions}`}>
+    {imageUnavailable ? (
+      <div role="img" aria-label="Maya" className={`grid h-full w-full place-items-center rounded-full bg-gradient-to-br from-emerald-200 via-teal-300 to-cyan-500 font-serif ${monogramSize} font-bold tracking-[-0.08em] text-slate-950 shadow-inner`}>M</div>
+    ) : (
+      <img src={src || undefined} alt="Maya" onError={() => setImageUnavailable(true)} className="h-full w-full rounded-full object-cover" />
+    )}
+    <span className={`maya-mood-dot maya-mood-${mood?.toLowerCase() || "calm"}`} />
+  </div>;
 }
 
 export default function MayaCompanion() {
@@ -127,7 +136,7 @@ export default function MayaCompanion() {
   const dailyCheckInMutation = trpc.maya.openDailyCheckIn.useMutation();
   const preferencesMutation = trpc.maya.updatePreferences.useMutation();
 
-  const mayaPhoto = bootstrap.data?.preferences?.displayPhoto || DEFAULT_MAYA_PHOTO;
+  const mayaPhoto = bootstrap.data?.preferences?.displayPhoto;
   const latestMaya = [...messages].reverse().find((message) => message.role === "maya");
   const activeMood = latestMaya?.emotion || "calm";
   const userFirstName = user?.name?.split(" ")[0] || "there";
@@ -361,7 +370,7 @@ export default function MayaCompanion() {
   const drawerContent = activePanel !== "chat" ? <MayaContextDrawer panel={activePanel} messages={bootstrap.data?.messages || []} moodEntries={bootstrap.data?.mood?.slice(0, 14) || []} sessions={bootstrap.data?.dailyCheckIns || []} onDailyCheckIn={startDailyCheckIn} /> : null;
 
   if (isAuthenticated && loading) return <div className="maya-loading"><Loader2 className="animate-spin"/><span>Opening Maya…</span></div>;
-  if (!isAuthenticated) return <main className="maya-landing"><section className="maya-landing-card"><div className="maya-brand"><span className="maya-spark"><Sparkles size={17}/></span> maya</div><div className="maya-hero-content"><Avatar src={DEFAULT_MAYA_PHOTO} mood="joyful" size="lg"/><div><span className="maya-eyebrow">YOUR COMPANION, AT YOUR PACE</span><h1>A little more <em>seen.</em><br/>A little less alone.</h1><p>Maya is a warm AI companion for real conversations, voice notes, games, and small things worth remembering.</p><button className="maya-primary-button" onClick={() => startLogin()}>Meet Maya <ArrowUp size={17}/></button><p className="maya-privacy-note"><Info size={14}/> Private to your account. Maya is an AI companion, not emergency or professional support.</p></div></div></section></main>;
+  if (!isAuthenticated) return <main className="maya-landing"><section className="maya-landing-card"><div className="maya-brand"><span className="maya-spark"><Sparkles size={17}/></span> maya</div><div className="maya-hero-content"><Avatar mood="joyful" size="lg"/><div><span className="maya-eyebrow">YOUR COMPANION, AT YOUR PACE</span><h1>A little more <em>seen.</em><br/>A little less alone.</h1><p>Maya is a warm AI companion for real conversations, voice notes, games, and small things worth remembering.</p><button className="maya-primary-button" onClick={() => startLogin()}>Meet Maya <ArrowUp size={17}/></button><p className="maya-privacy-note"><Info size={14}/> Private to your account. Maya is an AI companion, not emergency or professional support.</p></div></div></section></main>;
 
   return <main className="maya-messenger">
     <aside className="maya-chat-list" aria-label="Conversations">

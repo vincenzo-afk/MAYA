@@ -2,7 +2,7 @@
 
 ## Final regression evidence — 19 August 2026
 
-The latest automated regression run completed successfully: **8 Vitest files and 50 tests passed**, with one opt-in live-credential test skipped by default, followed by a clean `tsc --noEmit` check and production build. The coverage includes extracted activity helpers, player-friendly game policies, explicit input lockout, timer cleanup, voice safety, streamed-chat states, protected companion procedures, Supabase media storage, Groq transcription, and the absence of the retired image-generation procedure.
+The latest automated regression run completed successfully: **8 Vitest files and 51 tests passed**, with one opt-in live-credential test skipped by default, followed by a clean `tsc --noEmit` check and production build. The coverage includes extracted activity helpers, player-friendly game policies, explicit input lockout, timer cleanup, voice safety, streamed-chat states, protected companion procedures, Supabase media storage, Groq transcription, absence of the retired image-generation procedure, and safe avatar fallback transitions.
 
 The current desktop (1280×720) and mobile (375×812) previews both render the redesigned WhatsApp-style messenger shell without build or TypeScript errors. The chat layout retains its composer, message area, conversation identity, and responsive header controls at mobile width.
 

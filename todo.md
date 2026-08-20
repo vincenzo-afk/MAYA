@@ -89,3 +89,6 @@
 - [x] Push the image-generation removal to GitHub and confirm Render redeploys the updated build.
 - [x] Verify the live Render release returns HTTP 200 and no longer ships image-generation UI or API identifiers.
 - [ ] Complete authenticated live-host verification for chat, voice notes and media upload, games, and Supabase session persistence on the Render deployment.
+- [x] Replace the broken Maya avatar fallback seen in the checkpoint preview with a deliberate branded avatar treatment when the external image is unavailable.
+- [x] Replace the retired storage-backed default Maya avatar with a local branded fallback that never invokes the media proxy.
+- [x] Make Maya’s avatar fallback react safely when a later user-selected display image replaces the default source.
