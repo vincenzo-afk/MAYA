@@ -86,5 +86,6 @@
 - [x] Evaluate the requested Colab image-generation option and discontinue it because the image-generation feature was removed from Maya.
 - [x] Remove Maya’s image-generation capability completely from the chat interface, backend API, environment contract, tests, and public documentation.
 - [x] Audit and remove any remaining image-generation environment or configuration references outside generated build artifacts and service logs.
-- [ ] Push the image-generation removal to GitHub and confirm Render redeploys the updated build.
-- [ ] Re-verify the live Render application after redeploy to confirm photo-request paths are absent and core chat, voice, media, games, and persistence remain available.
+- [x] Push the image-generation removal to GitHub and confirm Render redeploys the updated build.
+- [x] Verify the live Render release returns HTTP 200 and no longer ships image-generation UI or API identifiers.
+- [ ] Complete authenticated live-host verification for chat, voice notes and media upload, games, and Supabase session persistence on the Render deployment.
