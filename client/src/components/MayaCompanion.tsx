@@ -13,11 +13,9 @@ import {
   CircleDot,
   Clock3,
   Heart,
-  Image as ImageIcon,
   Info,
   Lightbulb,
   Loader2,
-  Maximize2,
   MessageCircleHeart,
   Mic,
   MicOff,
@@ -101,9 +99,6 @@ export default function MayaCompanion() {
   const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [messageText, setMessageText] = useState("");
   const [activePanel, setActivePanel] = useState<ContextPanel>("chat");
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [photoPrompt, setPhotoPrompt] = useState("a cozy coffee shop selfie on a rainy evening");
-  const [showPhotoRequest, setShowPhotoRequest] = useState(false);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -126,7 +121,6 @@ export default function MayaCompanion() {
   const recognitionRef = useRef<any>(null);
   const streamTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const photoMutation = trpc.maya.generatePhoto.useMutation();
   const voiceMutation = trpc.maya.processVoiceNote.useMutation();
   const reactionMutation = trpc.maya.setReaction.useMutation();
   const mediaMutation = trpc.maya.sendMedia.useMutation();
@@ -273,15 +267,6 @@ export default function MayaCompanion() {
     } finally { setIsStreaming(false); }
   };
 
-  const requestPhoto = () => {
-    const prompt = photoPrompt.trim();
-    if (!prompt) { toast.error("Tell Maya the scene you would like to see."); return; }
-    photoMutation.mutate({ prompt }, {
-      onSuccess: (message) => { setMessages((current) => [...current, message as LocalMessage]); setShowPhotoRequest(false); utils.maya.bootstrap.invalidate(); },
-      onError: (error) => toast.error(error.message || "Maya couldn't make that photo just now."),
-    });
-  };
-
   const reactToMessage = (messageId: number, emoji: string) => {
     reactionMutation.mutate({ messageId, emoji }, {
       onSuccess: (reactions) => { setMessages((current) => current.map((message) => message.id === messageId ? { ...message, reactions } : message)); setReactionTarget(null); },
@@ -321,11 +306,6 @@ export default function MayaCompanion() {
     applyMayaTheme(document.documentElement, theme);
     preferencesMutation.mutate({ theme }, { onError: () => toast.error("Theme preference could not be saved.") });
   };
-
-  const usePhotoAsAvatar = (url: string) => preferencesMutation.mutate({ displayPhoto: url }, {
-    onSuccess: () => { utils.maya.bootstrap.invalidate(); toast.success("Maya's display photo is updated."); },
-    onError: () => toast.error("That display photo could not be saved."),
-  });
 
   const stopRecording = () => { if (recorderRef.current?.state === "recording") recorderRef.current.stop(); };
   const toggleRecording = async () => {
@@ -393,23 +373,22 @@ export default function MayaCompanion() {
     </aside>
 
     <section className="maya-chat-pane">
-      <header className="maya-chat-header"><div className="flex items-center gap-3"><Avatar src={mayaPhoto} mood={activeMood} size="sm"/><div><h1>Maya</h1><p><span className="maya-live-dot"/> {isStreaming ? "typing…" : activeMood === "caring" ? "listening closely" : "online"}</p></div></div><div className="maya-header-actions"><button className="maya-icon-button" onClick={() => setShowActivities(true)} aria-label="Play or watch with Maya"><CircleDot size={19}/></button><button className="maya-icon-button" onClick={() => setShowPhotoRequest(true)} aria-label="Ask Maya for a photo"><ImageIcon size={19}/></button><button className="maya-icon-button" onClick={() => { setShowCall(true); speak(`Hey ${userFirstName}, I’m here. What’s on your mind?`); }} aria-label="Call Maya"><Phone size={19}/></button><button className="maya-icon-button maya-mobile-only" onClick={() => setShowSettings(true)} aria-label="More options"><MoreHorizontal size={20}/></button></div></header>
+      <header className="maya-chat-header"><div className="flex items-center gap-3"><Avatar src={mayaPhoto} mood={activeMood} size="sm"/><div><h1>Maya</h1><p><span className="maya-live-dot"/> {isStreaming ? "typing…" : activeMood === "caring" ? "listening closely" : "online"}</p></div></div><div className="maya-header-actions"><button className="maya-icon-button" onClick={() => setShowActivities(true)} aria-label="Play or watch with Maya"><CircleDot size={19}/></button><button className="maya-icon-button" onClick={() => { setShowCall(true); speak(`Hey ${userFirstName}, I’m here. What’s on your mind?`); }} aria-label="Call Maya"><Phone size={19}/></button><button className="maya-icon-button maya-mobile-only" onClick={() => setShowSettings(true)} aria-label="More options"><MoreHorizontal size={20}/></button></div></header>
 
       <div className="maya-message-area">
         {messages.length === 0 && <div className="maya-empty-conversation"><Avatar src={mayaPhoto} mood="joyful" size="lg"/><h2>Hey {userFirstName}.<br/>How are you, really?</h2><p>A private space for ordinary days, big feelings, and everything in between.</p><div className="maya-suggestion-grid">{["I just need someone to talk to", "Tell me something that’ll make me smile", "Can we plan my evening?", "Let’s play something"].map((prompt) => <button key={prompt} onClick={() => void submitMessage(prompt)}>{prompt}<ChevronRight size={15}/></button>)}</div></div>}
-        {messages.map((message, index) => <Fragment key={message.id}>{(index === 0 || dayKey(message.createdAt) !== dayKey(messages[index - 1]?.createdAt)) && <div className="maya-date-divider"><span>{dayLabel(message.createdAt)}</span></div>}<article className={`maya-message ${message.role === "user" ? "from-user" : "from-maya"} ${message.status === "failed" ? "failed" : ""} ${shouldVisuallyGroupMessages(messages[index - 1], message) ? "grouped" : ""}`}><div className="maya-message-stack"><div className={`maya-bubble ${message.kind === "photo" ? "maya-photo-bubble" : ""}`}>
-          {message.kind === "photo" && message.mediaUrl && <button className="maya-photo-wrap" onClick={() => setSelectedPhoto(message.mediaUrl || null)}><img src={message.mediaUrl} alt="A photo Maya sent"/><span><Maximize2 size={14}/> Open</span></button>}
+        {messages.map((message, index) => <Fragment key={message.id}>{(index === 0 || dayKey(message.createdAt) !== dayKey(messages[index - 1]?.createdAt)) && <div className="maya-date-divider"><span>{dayLabel(message.createdAt)}</span></div>}<article className={`maya-message ${message.role === "user" ? "from-user" : "from-maya"} ${message.status === "failed" ? "failed" : ""} ${shouldVisuallyGroupMessages(messages[index - 1], message) ? "grouped" : ""}`}><div className="maya-message-stack"><div className="maya-bubble">
           {message.kind === "activity" && message.content === "GIF" && message.mediaUrl && <img className="maya-gif" src={message.mediaUrl} alt="GIF shared in the conversation"/>}
           {message.kind === "activity" && message.content.startsWith("Sticker:") && <div className="maya-sticker">{message.content.replace("Sticker: ", "")}</div>}
           {message.kind === "voice" && message.role === "user" && <div className="maya-voice-label"><Waves size={14}/> Voice note · transcribed by Maya</div>}
           {message.kind !== "activity" && <p>{message.content || (message.role === "maya" && isStreaming ? <span className="maya-typing">Maya is typing</span> : "")}</p>}
-        </div><div className="maya-message-meta"><span>{shortTime(message.createdAt)}</span>{message.role === "user" && <span className={message.status === "failed" ? "maya-message-failed" : "maya-delivery"} aria-label={deliveryStatusLabel(message.status)} title={deliveryStatusLabel(message.status)}>{message.status === "pending" ? <Clock3 size={12}/> : message.status === "failed" ? "Not sent" : <CheckCheck size={14}/>}</span>}{message.role === "maya" && message.kind === "photo" && message.mediaUrl && <button onClick={() => usePhotoAsAvatar(message.mediaUrl!)}>Use as Maya’s photo</button>}</div><div className="maya-reactions"><div className="maya-reaction-chips">{message.reactions?.map((reaction, reactionIndex) => <span key={`${reaction}-${reactionIndex}`}>{reaction}</span>)}</div><button className="maya-add-reaction" onClick={() => setReactionTarget(reactionTarget === message.id ? null : message.id)} aria-label="Add reaction" aria-expanded={reactionTarget === message.id}>+</button>{reactionTarget === message.id && <div className="maya-reaction-picker" role="group" aria-label="Choose a reaction">{EMOJI_REACTIONS.map((emoji) => <button key={emoji} onClick={() => reactToMessage(message.id, emoji)} aria-label={`React ${emoji}`}>{emoji}</button>)}</div>}</div></div></article></Fragment>)}
-        {(voiceMutation.isPending || photoMutation.isPending) && <div className="maya-pending"><Avatar src={mayaPhoto} mood="curious" size="sm"/><span><i/><i/><i/></span></div>}
+        </div><div className="maya-message-meta"><span>{shortTime(message.createdAt)}</span>{message.role === "user" && <span className={message.status === "failed" ? "maya-message-failed" : "maya-delivery"} aria-label={deliveryStatusLabel(message.status)} title={deliveryStatusLabel(message.status)}>{message.status === "pending" ? <Clock3 size={12}/> : message.status === "failed" ? "Not sent" : <CheckCheck size={14}/>}</span>}</div><div className="maya-reactions"><div className="maya-reaction-chips">{message.reactions?.map((reaction, reactionIndex) => <span key={`${reaction}-${reactionIndex}`}>{reaction}</span>)}</div><button className="maya-add-reaction" onClick={() => setReactionTarget(reactionTarget === message.id ? null : message.id)} aria-label="Add reaction" aria-expanded={reactionTarget === message.id}>+</button>{reactionTarget === message.id && <div className="maya-reaction-picker" role="group" aria-label="Choose a reaction">{EMOJI_REACTIONS.map((emoji) => <button key={emoji} onClick={() => reactToMessage(message.id, emoji)} aria-label={`React ${emoji}`}>{emoji}</button>)}</div>}</div></div></article></Fragment>)}
+        {voiceMutation.isPending && <div className="maya-pending"><Avatar src={mayaPhoto} mood="curious" size="sm"/><span><i/><i/><i/></span></div>}
         {failedText && <div className="maya-retry-row"><span>Message not delivered.</span><button onClick={() => void submitMessage(failedText)}>Try again <RotateCcw size={13}/></button></div>}
         <div ref={bottomRef}/>
       </div>
 
-      <footer className="maya-composer"><div className="maya-composer-tools"><button onClick={() => setShowMediaPicker(true)} aria-label="Send a GIF or sticker"><Sparkles size={19}/></button><button onClick={() => setShowPhotoRequest(true)} aria-label="Request a Maya photo"><ImageIcon size={19}/></button><button className={isRecording ? "recording" : ""} onClick={toggleRecording} aria-label={isRecording ? "Stop recording" : "Record a voice note"}>{isRecording ? <MicOff size={19}/> : <Mic size={19}/>}</button></div><textarea ref={composerRef} value={messageText} onChange={(event) => setMessageText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitMessage(); } }} placeholder="Message Maya" rows={1} aria-label="Message Maya"/><button className="maya-send-button" onClick={() => void submitMessage()} disabled={!messageText.trim() || isStreaming} aria-label="Send message">{isStreaming ? <Loader2 className="animate-spin" size={19}/> : <Send size={19}/>}</button><p>{isRecording ? "Recording… tap the microphone to finish" : isStreaming ? "Maya is replying…" : "Enter to send · Shift + Enter for a new line"}</p></footer>
+      <footer className="maya-composer"><div className="maya-composer-tools"><button onClick={() => setShowMediaPicker(true)} aria-label="Send a GIF or sticker"><Sparkles size={19}/></button><button className={isRecording ? "recording" : ""} onClick={toggleRecording} aria-label={isRecording ? "Stop recording" : "Record a voice note"}>{isRecording ? <MicOff size={19}/> : <Mic size={19}/>}</button></div><textarea ref={composerRef} value={messageText} onChange={(event) => setMessageText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitMessage(); } }} placeholder="Message Maya" rows={1} aria-label="Message Maya"/><button className="maya-send-button" onClick={() => void submitMessage()} disabled={!messageText.trim() || isStreaming} aria-label="Send message">{isStreaming ? <Loader2 className="animate-spin" size={19}/> : <Send size={19}/>}</button><p>{isRecording ? "Recording… tap the microphone to finish" : isStreaming ? "Maya is replying…" : "Enter to send · Shift + Enter for a new line"}</p></footer>
     </section>
 
     {activePanel !== "chat" && <aside className="maya-context-drawer"><button className="maya-drawer-close" onClick={() => setActivePanel("chat")} aria-label="Close panel"><X size={19}/></button>{drawerContent}</aside>}
@@ -418,12 +397,9 @@ export default function MayaCompanion() {
 
     {showVoicePicker && <div className="maya-modal-backdrop" onMouseDown={() => setShowVoicePicker(false)}><section className="maya-modal maya-voice-modal" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowVoicePicker(false)}><X size={18}/></button><span className="maya-eyebrow">MAYA’S VOICE</span><h2>How should she sound?</h2><p>Choose one of ten expressive styles. Your browser selects the closest available local voice.</p><div className="maya-voice-grid">{MAYA_VOICE_STYLES.map((voice, index) => <button key={voice.name} className={voiceStyle === index ? "selected" : ""} onClick={() => updateVoiceStyle(index)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{voice.name}</strong><small>{voice.tagline}</small><Play size={14}/></button>)}</div></section></div>}
 
-    {showPhotoRequest && <div className="maya-modal-backdrop" onMouseDown={() => setShowPhotoRequest(false)}><section className="maya-modal maya-photo-request" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowPhotoRequest(false)}><X size={18}/></button><span className="maya-eyebrow">ASK MAYA FOR A PHOTO</span><h2>Paint a little scene.</h2><p>Describe the mood, outfit, place, or moment you want Maya to share.</p><textarea value={photoPrompt} onChange={(event) => setPhotoPrompt(event.target.value)} rows={4} placeholder="A sunny Sunday morning at a flower market…"/><button className="maya-primary-button" onClick={requestPhoto} disabled={photoMutation.isPending}>{photoMutation.isPending ? <Loader2 className="animate-spin" size={17}/> : <ImageIcon size={17}/>} Ask Maya</button></section></div>}
-
     {showMediaPicker && <div className="maya-modal-backdrop" onMouseDown={() => setShowMediaPicker(false)}><section className="maya-modal maya-media-modal" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setShowMediaPicker(false)}><X size={18}/></button><span className="maya-eyebrow">LITTLE EXTRAS</span><h2>Send a tiny moment.</h2><div className="maya-gif-grid">{GIF_CHOICES.map((gif) => <button key={gif.label} onClick={() => sendMedia({ type: "GIF", mediaUrl: gif.url })}><img src={gif.url} alt={gif.label}/><span>{gif.label}</span></button>)}</div><div className="maya-sticker-grid">{STICKER_CHOICES.map((sticker) => <button key={sticker} onClick={() => sendMedia({ type: "sticker", sticker })}>{sticker}</button>)}</div></section></div>}
 
     {showActivities && <MayaActivities onClose={() => setShowActivities(false)} onDiscuss={(message) => { setShowActivities(false); void submitMessage(message); }}/>} 
     {showCall && <div className="maya-modal-backdrop maya-call-backdrop"><section className="maya-call-modal"><button className="maya-close" onClick={() => closeMayaCall(recognitionRef.current, window.speechSynthesis, setIsListening, setCallStatus, setShowCall)}><X size={19}/></button><Avatar src={mayaPhoto} mood={callStatus === "thinking" ? "thoughtful" : callStatus === "speaking" ? "joyful" : "caring"} size="lg"/><span className="maya-eyebrow">MAYA CALL</span><h2>{callStatus === "listening" ? "I’m listening…" : callStatus === "thinking" ? "Let me think…" : callStatus === "speaking" ? "Maya is speaking" : "Talk to Maya"}</h2><p>{callTranscript || "Tap the microphone to talk. Maya will reply out loud."}</p><div className="maya-wave-bars">{Array.from({ length: 22 }).map((_, index) => <i key={index} style={{ height: `${18 + ((index * 19) % 36)}px` }}/>)}</div><button className={`maya-call-mic ${isListening ? "live" : ""}`} onClick={isListening ? stopListening : startListening}>{isListening ? <MicOff size={22}/> : <Mic size={22}/>}</button><small>Live transcription uses your browser’s Web Speech API</small></section></div>}
-    {selectedPhoto && <div className="maya-modal-backdrop" onMouseDown={() => setSelectedPhoto(null)}><section className="maya-image-modal" onMouseDown={(event) => event.stopPropagation()}><button className="maya-close" onClick={() => setSelectedPhoto(null)}><X size={19}/></button><img src={selectedPhoto} alt="Maya's full photo"/><button className="maya-primary-button maya-use-photo" onClick={() => usePhotoAsAvatar(selectedPhoto)}>Use as Maya’s display photo</button></section></div>}
   </main>;
 }

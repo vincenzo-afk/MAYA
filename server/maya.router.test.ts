@@ -16,7 +16,6 @@ const dbMocks = vi.hoisted(() => ({
 
 vi.mock("./db", () => dbMocks);
 vi.mock("./mayaBrain", () => ({ generateMayaReply: vi.fn() }));
-vi.mock("./_core/imageGeneration", () => ({ generateImage: vi.fn() }));
 vi.mock("./_core/voiceTranscription", () => ({ transcribeAudio: vi.fn() }));
 
 import { appRouter } from "./routers";
@@ -43,6 +42,10 @@ function caller() {
 
 describe("Maya protected companion APIs", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("does not expose image generation after the photo feature was removed", () => {
+    expect((appRouter._def.procedures as Record<string, unknown>)["maya.generatePhoto"]).toBeUndefined();
+  });
 
   it("persists a sticker as an account-scoped activity message", async () => {
     const message = { id: 1, userId: 42, content: "Sticker: 🌷" };

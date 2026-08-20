@@ -81,5 +81,10 @@
 - [x] Migrate Maya’s external production persistence from the managed database environment to a user-controlled Supabase project without changing per-user data isolation.
 - [x] Configure Maya’s server-side companion LLM adapter to use the user-provided Groq API key with verified external credentials and no client-side key exposure.
 - [x] Replace Maya’s Forge-dependent private media storage with Supabase Storage and its server-side voice-note transcription with Groq Whisper.
-- [ ] Configure Render with the remaining production integrations required by Maya, or replace the Forge-dependent storage, transcription, and image-generation paths with user-controlled services.
-- [ ] Complete authenticated live-host verification for OAuth sign-in, chat, voice notes and media upload, photo generation, games, and session persistence on the Render deployment.
+- [x] Complete the Render media-integration migration: private storage uses Supabase, transcription uses Groq Whisper, and the image-generation feature has been removed.
+- [ ] Complete authenticated live-host verification for OAuth sign-in, chat, voice notes and media upload, games, and session persistence on the Render deployment.
+- [x] Evaluate the requested Colab image-generation option and discontinue it because the image-generation feature was removed from Maya.
+- [x] Remove Maya’s image-generation capability completely from the chat interface, backend API, environment contract, tests, and public documentation.
+- [x] Audit and remove any remaining image-generation environment or configuration references outside generated build artifacts and service logs.
+- [ ] Push the image-generation removal to GitHub and confirm Render redeploys the updated build.
+- [ ] Re-verify the live Render application after redeploy to confirm photo-request paths are absent and core chat, voice, media, games, and persistence remain available.

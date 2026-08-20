@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { generateImage } from "../_core/imageGeneration";
 import { transcribeAudio } from "../_core/voiceTranscription";
 import { protectedProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
@@ -20,11 +19,9 @@ import { generateMayaReply } from "../mayaBrain";
 
 const messageInput = z.object({
   content: z.string().trim().min(1).max(4000),
-  kind: z.enum(["text", "voice", "photo", "activity"]).default("text"),
+  kind: z.enum(["text", "voice", "activity"]).default("text"),
   mediaUrl: z.string().max(2048).optional(),
 });
-
-const appearancePrefix = "A photorealistic portrait of Maya, a fictional adult Indian woman in her mid twenties, warm expressive brown eyes, long softly waved dark hair, kind natural smile, tasteful modern fully clothed outfit, candid smartphone photo, authentic natural skin texture, editorial lifestyle photography, safe for work. ";
 
 function decodeDataUrl(dataUrl: string) {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -55,23 +52,6 @@ export const mayaRouter = router({
       emotionIntensity: brain.emotion.intensity,
     });
     return { userMessage, mayaMessage, emotion: brain.emotion };
-  }),
-
-  generatePhoto: protectedProcedure.input(z.object({ prompt: z.string().trim().min(3).max(500) })).mutation(async ({ ctx, input }) => {
-    const { url } = await generateImage({
-      prompt: `${appearancePrefix} Scene request: ${input.prompt}. Do not add text, watermark, logo, revealing clothing, or extra people.`,
-      quality: "medium",
-    });
-    const photoMessage = await createMessage({
-      userId: ctx.user.id,
-      role: "maya",
-      kind: "photo",
-      content: "I thought you might like this little moment from my day.",
-      mediaUrl: url,
-      emotion: "playful",
-      emotionIntensity: 3,
-    });
-    return photoMessage;
   }),
 
   processVoiceNote: protectedProcedure.input(z.object({

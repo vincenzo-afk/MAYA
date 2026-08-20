@@ -44,7 +44,7 @@ The companion experience is personalized per user. The application persists mess
 | Emotional conversation | Server-Sent Events (SSE) streaming, heuristic emotion labeling, a warm Hinglish-friendly prompt, and user-mood logs. |
 | Continuity | Durable memory candidates for names, preferences, and birthdays, plus rapport and recurring-topic context. |
 | Voice | Recorded voice notes uploaded to storage and transcribed server-side; browser speech synthesis with ten selectable voice styles; browser speech-recognition call mode where supported. |
-| Visual messages | In-chat photorealistic image generation for Maya, tap-to-expand photo presentation, emoji reactions, GIFs, and stickers. |
+| Expressive messages | Emoji reactions, GIFs, and stickers inside the private companion conversation. |
 | Shared activities | Chess, Sudoku, tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteasers, a math prompt, calendar/day lookup, a browser voice game, and YouTube co-watch. Competitive games include visible thinking turns and friendly Maya policies that leave the user meaningful opportunities to win. [10] |
 | Privacy boundary | Manus OAuth authentication and user-scoped database procedures for companion data. |
 
@@ -54,7 +54,7 @@ The companion experience is personalized per user. The application persists mess
 
 ## <a name="architecture"></a>Architecture
 
-The React client communicates with the tRPC API under `/api/trpc`. Text chat uses a dedicated authenticated SSE endpoint at `/api/maya/stream`, allowing the user message, response deltas, and final stored Maya message to arrive progressively. Express also serves the Manus OAuth callback and storage proxy; Drizzle persists user-scoped records to a MySQL-compatible database. [1] [3] [4]
+The React client communicates with the tRPC API under `/api/trpc`. Text chat uses a dedicated authenticated SSE endpoint at `/api/maya/stream`, allowing the user message, response deltas, and final stored Maya message to arrive progressively. Express serves the OAuth callback and the private storage proxy; the server uses Supabase PostgreSQL and Storage for user-scoped records and media.
 
 ```mermaid
 flowchart LR
@@ -67,15 +67,13 @@ flowchart LR
   S --> E
   V --> E
   E --> O[Manus OAuth session]
-  E --> L[Forge-compatible LLM]
-  E --> T[Whisper transcription]
-  E --> I[Image generation]
-  E --> ST[Object storage]
-  E --> D[(MySQL / Drizzle)]
+  E --> L[Groq chat completion]
+  E --> T[Groq Whisper transcription]
+  E --> ST[Supabase Storage]
+  E --> D[(Supabase PostgreSQL)]
 
   L --> E
   T --> E
-  I --> E
   ST --> E
   D --> E
 ```
@@ -95,9 +93,9 @@ flowchart LR
 |---|---|
 | Frontend | React **19.2.1**, React DOM **19.2.1**, TypeScript **5.9.3**, Vite **7.1.7**, Wouter **3.3.5**, TanStack React Query **5.90.2**, Tailwind CSS **4.1.14**, Framer Motion **12.23.22**. [5] |
 | Backend | Express **4.21.2**, tRPC **11.6.0**, Zod **4.1.12**, SuperJSON **1.13.3**, TSX **4.19.1**. [5] |
-| Data and storage | Drizzle ORM **0.44.5**, Drizzle Kit **0.31.4**, MySQL2 **3.15.0**, AWS SDK S3 client **3.693.0**. [5] |
+| Data and storage | Supabase PostgreSQL and Storage, with Drizzle ORM **0.44.5** and Drizzle Kit **0.31.4** retained for tracked schema and migration history. [5] |
 | Companion activities | Chess.js **1.4.0** for chess rules and move generation. [5] |
-| AI services | Forge-compatible chat completion streaming, server-side Whisper transcription semantics, managed image generation, and managed object storage. [2] [4] |
+| AI services | Groq chat completion streaming and server-side Groq Whisper transcription. |
 | Testing and quality | Vitest **2.1.4**, TypeScript compiler checks, and Prettier **3.6.2**. [5] |
 
 ---
@@ -106,7 +104,7 @@ flowchart LR
 
 ### Prerequisites
 
-Install Node.js and the package manager specified by the project: `pnpm@10.4.1`. The repository does not define a Node `engines` range; use a current Node.js release compatible with the listed tooling. A running MySQL-compatible database and the configured Manus/Forge services are required for authentication, persistence, LLM responses, transcription, image generation, and storage. [5] [6]
+Install Node.js and the package manager specified by the project: `pnpm@10.4.1`. The repository does not define a Node `engines` range; use a current Node.js release compatible with the listed tooling. Production requires a Supabase project for persistence and private media, plus a server-only Groq API key for companion replies and voice-note transcription.
 
 ### Installation
 
@@ -191,13 +189,12 @@ All procedures under `maya.*` are protected by Manus authentication. The generat
 |---|---|---|
 | `maya.bootstrap` | Query | Loads recent messages, preferences, mood entries, and daily check-ins. |
 | `maya.sendMessage` | Mutation | Creates a message and returns a non-streamed Maya reply plus emotion data. |
-| `maya.generatePhoto` | Mutation | Creates a safe-for-work Maya photo message from a 3–500 character scene request. |
 | `maya.processVoiceNote` | Mutation | Stores, transcribes, and responds to a recorded voice note. |
 | `maya.setReaction` | Mutation | Toggles an emoji reaction on a user-owned message. |
 | `maya.sendMedia` | Mutation | Stores a GIF URL or a sticker message. |
 | `maya.memories`, `maya.mood`, `maya.dailyCheckIns` | Queries | Reads user-scoped companion history. |
 | `maya.openDailyCheckIn` | Mutation | Opens or returns the one daily check-in for a `YYYY-MM-DD` date. |
-| `maya.preferences`, `maya.updatePreferences` | Query / mutation | Reads or updates theme, voice style, and display photo. |
+| `maya.preferences`, `maya.updatePreferences` | Query / mutation | Reads or updates theme and voice style. |
 | `maya.saveGameSession` | Mutation | Persists chess, Sudoku, tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteaser, math, calendar, or voice-game state for the signed-in user. |
 | `maya.saveYoutubeSession` | Mutation | Persists a YouTube co-watch URL, title, and notes. |
 
@@ -216,7 +213,7 @@ The schema models each companion artifact by `userId` and indexes common history
 | `maya_memories` | Durable memory facts, categories, relevance, and update timestamps. |
 | `maya_mood_logs` | Detected user mood, Maya emotion, intensity, and optional check-in session link. |
 | `maya_daily_checkins` | One private daily check-in per user/date. |
-| `maya_preferences` | Theme, voice-style index, and optional display photo. |
+| `maya_preferences` | Theme and voice-style index. |
 | `maya_relationships` | Rapport score, preferred tone, recurring mood, and last meaningful topic. |
 | `maya_game_sessions` | Saved state and results for supported activities. |
 | `maya_youtube_sessions` | Co-watch video URL, title, notes, and creation time. |
@@ -268,7 +265,7 @@ MAYA/
 - ✅ Streaming emotional text chat with persisted context and relationship state.
 - ✅ Server-side voice-note transcription and media storage.
 - ✅ Browser voice-call mode and ten playback-style presets.
-- ✅ Image messages, emoji reactions, GIFs, and stickers.
+- ✅ Emoji reactions, GIFs, and stickers.
 - ✅ Chess, Sudoku difficulty settings and hints, player-friendly tic-tac-toe, Ludo, Snakes & Ladders, Connect Four, 2048, Would You Rather, brainteasers, math, calendar, and a voice game.
 - ✅ Visible Maya thinking turns, legal-move lockout, safe timer cleanup, contextual game-to-chat handoffs, and graceful saved-session error feedback.
 - ✅ YouTube co-watch embed with private session notes.
@@ -276,7 +273,7 @@ MAYA/
 
 ### Operating notes
 
-Browser `SpeechRecognition` is not universal; the voice-call and voice-game UI displays a fallback explanation where the capability is unavailable. Image generation, LLM replies, storage, and transcription depend on platform-provided Forge services and credentials. The codebase contains no Dockerfile, compose definition, or CI workflow, so container and CI instructions are not implied by this repository. [4] [8] [10]
+Browser `SpeechRecognition` is not universal; the voice-call and voice-game UI displays a fallback explanation where the capability is unavailable. LLM replies and transcription require a server-only Groq API key, while private media storage requires the server-only Supabase connection. The codebase contains no Dockerfile, compose definition, or CI workflow, so container and CI instructions are not implied by this repository.
 
 ---
 
@@ -289,7 +286,7 @@ pnpm test
 pnpm check
 ```
 
-The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, and saved-session error feedback. The current suite contains **five test files and forty-two tests**. [5] [13]
+The project uses Vitest. The committed suite covers session logout behavior, protected companion procedures and game-session validation, emotion/memory helpers and streaming-error handling, voice safety, Supabase media storage, Groq transcription, fair-play game policies, deterministic Ludo/Snakes & Ladders/Connect Four/2048/Would You Rather rules, turn cancellation, completion lockout, saved-session error feedback, and regression coverage confirming the image-generation procedure is absent. The current suite contains **eight passing test files and fifty tests**, plus one opt-in live-credential test that is skipped by default.
 
 Format source files with:
 
