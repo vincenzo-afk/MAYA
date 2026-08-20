@@ -65,7 +65,7 @@
 - [x] Update the GitHub repository description and topics for Maya.
 - [x] Push the final audited source, migrations, tests, and documentation to github.com/vincenzo-afk/MAYA using the requested repository identity.
 - [ ] Capture the remaining authenticated drawer or modal evidence after the handcrafted CSS pass, then close the companion-surface design refinement verification.
-- [ ] Add Maya’s hosted website URL to the repository About section; the requested 20 GitHub discovery topics are now published.
+- [x] Add Maya’s hosted website URL to the repository About section; the requested 20 GitHub discovery topics are now published.
 - [ ] Prepare the checkpointed Maya project for hosting and guide the user through the required Publish action in the project interface.
 - [x] Assess Maya’s Vercel/Render production readiness, including external OAuth redirect requirements and required environment variables.
 - [ ] Deploy Maya through the user’s connected browser to Vercel or Render, then add the resulting hosted URL to the GitHub repository About section.
@@ -76,7 +76,10 @@
 - [ ] Confirm the active Render page is the user’s connected browser session before entering deployment or environment configuration.
 - [ ] Complete Render deployment through the user-confirmed connected device browser session and capture the resulting public service URL.
 - [ ] Complete all remaining external-host browser actions only through the user’s real connected browser session, with no sandbox-browser fallback.
-- [ ] Use the user-authorized Render API credential to create and configure Maya’s external production web service without exposing the token.
+- [x] Use the user-authorized Render API credential to create and configure Maya’s external production web service without exposing the token.
 - [x] Revalidate and, if reproducible, resolve the recorded Maya activity-module import failure before final release verification.
 - [x] Migrate Maya’s external production persistence from the managed database environment to a user-controlled Supabase project without changing per-user data isolation.
 - [x] Configure Maya’s server-side companion LLM adapter to use the user-provided Groq API key with verified external credentials and no client-side key exposure.
+- [x] Replace Maya’s Forge-dependent private media storage with Supabase Storage and its server-side voice-note transcription with Groq Whisper.
+- [ ] Configure Render with the remaining production integrations required by Maya, or replace the Forge-dependent storage, transcription, and image-generation paths with user-controlled services.
+- [ ] Complete authenticated live-host verification for OAuth sign-in, chat, voice notes and media upload, photo generation, games, and session persistence on the Render deployment.

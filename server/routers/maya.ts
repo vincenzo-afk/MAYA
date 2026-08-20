@@ -84,7 +84,9 @@ export const mayaRouter = router({
     const key = `maya/${ctx.user.id}/voice/${Date.now()}-${input.fileName.replace(/[^a-z0-9._-]/gi, "-")}`;
     const { url } = await storagePut(key, bytes, mimeType);
     const transcriptResult = await transcribeAudio({
-      audioUrl: url,
+      audioData: bytes,
+      fileName: input.fileName,
+      mimeType,
       language: input.language,
       prompt: "A personal conversation with Maya, an AI companion. The user may speak English or Hinglish.",
     });
